@@ -22,6 +22,14 @@ CREATE TABLE patients (
     insurance_policy_number VARCHAR(50) NOT NULL
 );
 
+-- Таблица "Поликлиника"
+CREATE TABLE clinic (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    address VARCHAR(255) NOT NULL,
+    phone VARCHAR(20) NOT NULL
+);
+
 -- Таблица "Доктора"
 CREATE TABLE doctors (
     id SERIAL PRIMARY KEY,
@@ -31,14 +39,6 @@ CREATE TABLE doctors (
     clinic_id INT NOT NULL REFERENCES clinic(id) ON DELETE CASCADE
 );
 
--- Таблица "Поликлиника"
-CREATE TABLE clinic (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    address VARCHAR(255) NOT NULL,
-    phone VARCHAR(20) NOT NULL
-);
-
 -- Таблица "Записи на прием"
 CREATE TABLE appointments (
     id SERIAL PRIMARY KEY,
@@ -46,7 +46,8 @@ CREATE TABLE appointments (
     doctor_id INT REFERENCES doctors(id) ON DELETE CASCADE,
     appointment_date DATE NOT NULL,
     status VARCHAR(50) DEFAULT 'запланировано',
-    clinic_id INT REFERENCES clinic(id) ON DELETE CASCADE
+    clinic_id INT REFERENCES clinic(id) ON DELETE CASCADE,
+    CONSTRAINT chk_status CHECK (status IN ('запланировано', 'пропущено', 'отменено', 'завершено'))
 );
 
 -- Таблица "Медицинская книжка"
@@ -56,3 +57,43 @@ CREATE TABLE medical_records (
     conclusion TEXT NOT NULL,
     record_date DATE NOT NULL
 );
+
+-- Для ускорения поиска по имени пациента создаем индекс:
+CREATE INDEX idx_patients_full_name ON patients(full_name);
+
+-- Добавляем поле age (возраст) как производное
+ALTER TABLE patients ADD COLUMN age INT;
+
+CREATE OR REPLACE FUNCTION calculate_age()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.age := DATE_PART('year', AGE(NEW.birth_date));
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_calculate_age
+BEFORE INSERT OR UPDATE ON patients
+FOR EACH ROW
+EXECUTE FUNCTION calculate_age();
+
+-- Триггер для изменения статуса записи
+CREATE OR REPLACE FUNCTION update_appointment_status()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.appointment_date < CURRENT_DATE AND NEW.status = 'запланировано' THEN
+        NEW.status := 'пропущено';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_update_status
+BEFORE INSERT OR UPDATE ON appointments
+FOR EACH ROW
+EXECUTE FUNCTION update_appointment_status();
+
+-- Даем пользователю med_user доступ только к чтению и записи данных
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO med_user;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO med_user;
+
