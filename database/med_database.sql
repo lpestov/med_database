@@ -126,4 +126,3 @@ EXECUTE FUNCTION med_schema.update_appointment_status();
 -- Даем пользователю med_user доступ только к чтению и записи данных в схеме
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA med_schema TO med_user;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA med_schema TO med_user;
-
