@@ -136,10 +136,10 @@ CREATE OR REPLACE FUNCTION search_by_key(
     column_name TEXT,
     search_value TEXT
 )
-RETURNS SETOF RECORD AS $$
+RETURNS TABLE(result JSON) AS $$ -- Изменено на JSON
 BEGIN
     RETURN QUERY EXECUTE FORMAT(
-        'SELECT * FROM %I WHERE %I = %L',
+        'SELECT row_to_json(t) FROM %I t WHERE %I = %L',
         table_name,
         column_name,
         search_value
@@ -148,14 +148,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 /* Пример:
-SELECT * FROM search_by_key('patients', 'full_name', 'Иван Иванов') AS t(
-    id INTEGER,
-    full_name VARCHAR,
-    birth_date DATE,
-    contacts VARCHAR,
-    passport_data VARCHAR,
-    insurance_policy_number VARCHAR
-);
+SELECT * FROM search_by_key('patients', 'full_name', 'Иван Иванов');
 */
 
 -- Процедура удаления записи
@@ -171,10 +164,12 @@ $$;
 CREATE OR REPLACE FUNCTION insert_into_table(table_name TEXT, columns TEXT[], info TEXT[])
 RETURNS VOID AS $$
 BEGIN
-    EXECUTE format('INSERT INTO %I (%s) VALUES (%s)',
-                   table_name,
-                   array_to_string(columns, ', '),
-                   array_to_string(info, ', '));
+    EXECUTE format(
+        'INSERT INTO %I (%s) VALUES (%s)',
+        table_name,
+        array_to_string(columns, ', '),
+        array_to_string(ARRAY(SELECT quote_literal(x) FROM unnest(info) AS x), ', ')
+    );
 END;
 $$ LANGUAGE plpgsql;
 
@@ -182,7 +177,7 @@ $$ LANGUAGE plpgsql;
 SELECT insert_into_table(
     'patients',
     ARRAY['full_name', 'birth_date', 'contacts', 'passport_data', 'insurance_policy_number'],
-    ARRAY['\'Иван Иванов\'', '\'1980-01-01\'', '\'89991234567\'', '\'1234 567890\'', '\'12345678901234\'']
+    ARRAY['''Иван Иванов''', '''1980-01-01''', '''89991234567''', '''1234 567890''', '''12345678''']
 );
 */
 
@@ -214,22 +209,36 @@ $$ LANGUAGE plpgsql;
 -- Пример: SELECT count_tables();
 
 -- Функция для получения заголовков таблицы
-CREATE OR REPLACE FUNCTION get_table_headers(table_name TEXT)
-RETURNS TABLE(column_name TEXT) AS $$
+CREATE OR REPLACE FUNCTION get_all_table_headers()
+RETURNS JSON AS $$
+DECLARE
+    headers JSON;
 BEGIN
-    RETURN QUERY
-    SELECT column_name
-    FROM information_schema.columns
-    WHERE table_schema = 'med_schema' AND table_name = table_name;
+    SELECT json_object_agg(
+        table_name, -- Таблица
+        column_headers -- Заголовки столбцов
+    )
+    INTO headers
+    FROM (
+        SELECT 
+            c.table_name,
+            json_agg(c.column_name::TEXT ORDER BY c.ordinal_position) AS column_headers
+        FROM information_schema.columns AS c
+        WHERE c.table_schema = 'med_schema'
+        GROUP BY c.table_name
+        ORDER BY c.table_name
+    ) subquery;
+
+    RETURN headers;
 END;
 $$ LANGUAGE plpgsql;
--- Пример: SELECT * FROM get_table_headers('patients');
+-- Пример: SELECT get_all_table_headers();
 
 -- Функция для выдачи всех данных из таблицы
 CREATE OR REPLACE FUNCTION get_all_data(table_name TEXT)
-RETURNS TABLE(result RECORD) AS $$
+RETURNS SETOF JSON AS $$
 BEGIN
-    RETURN QUERY EXECUTE format('SELECT * FROM %I', table_name);
+    RETURN QUERY EXECUTE format('SELECT row_to_json(t) FROM %I AS t', table_name);
 END;
 $$ LANGUAGE plpgsql;
 -- Пример: SELECT * FROM get_all_data('patients');
