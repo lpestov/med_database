@@ -173,15 +173,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-/* Пример: 
+/* Пример:
 SELECT insert_into_table(
     'patients',
     ARRAY['full_name', 'birth_date', 'contacts', 'passport_data', 'insurance_policy_number'],
-    ARRAY['''Иван Иванов''', '''1980-01-01''', '''89991234567''', '''1234 567890''', '''12345678''']
+    ARRAY['Иван Иванов', '1980-01-01', '89991234567', '1234 567890', '12345678']
 );
 */
 
--- Процедура изменения записи 
+-- Процедура изменения записи
 CREATE OR REPLACE PROCEDURE update_record(table_name TEXT, column_name TEXT, new_value TEXT, key_column TEXT, key_value TEXT)
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -220,7 +220,7 @@ BEGIN
     )
     INTO headers
     FROM (
-        SELECT 
+        SELECT
             c.table_name,
             json_agg(c.column_name::TEXT ORDER BY c.ordinal_position) AS column_headers
         FROM information_schema.columns AS c
@@ -242,14 +242,3 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 -- Пример: SELECT * FROM get_all_data('patients');
-
-
-
-
-
-
-
-
-
-
-
