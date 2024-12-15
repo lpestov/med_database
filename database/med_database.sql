@@ -126,3 +126,102 @@ EXECUTE FUNCTION med_schema.update_appointment_status();
 -- Даем пользователю med_user доступ только к чтению и записи данных в схеме
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA med_schema TO med_user;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA med_schema TO med_user;
+
+
+-- Функции для доступа через gui
+
+-- Процедура поиска записи по ключу
+CREATE OR REPLACE FUNCTION search_by_key(table_name TEXT, column_name TEXT, key_value TEXT)
+RETURNS TABLE(result RECORD) AS $$
+BEGIN
+    RETURN QUERY EXECUTE format('SELECT * FROM %I WHERE %I = %L', table_name, column_name, key_value);
+END;
+$$ LANGUAGE plpgsql;
+-- Пример: SELECT * FROM search_by_key('patients', 'full_name', 'Иван Иванов');
+
+-- Процедура удаления записи
+CREATE OR REPLACE PROCEDURE delete_record(table_name TEXT, column_name TEXT, key_value TEXT)
+LANGUAGE plpgsql AS $$
+BEGIN
+    EXECUTE format('DELETE FROM %I WHERE %I = %L', table_name, column_name, key_value);
+END;
+$$;
+-- Пример: CALL delete_record('patients', 'id', '1');
+
+-- Процедура вставки данных
+CREATE OR REPLACE FUNCTION insert_into_table(table_name TEXT, columns TEXT[], values TEXT[])
+RETURNS VOID AS $$
+BEGIN
+    EXECUTE format('INSERT INTO %I (%s) VALUES (%s)',
+                   table_name,
+                   array_to_string(columns, ', '),
+                   array_to_string(values, ', '));
+END;
+$$ LANGUAGE plpgsql;
+
+/* Пример: 
+SELECT insert_into_table(
+    'patients',
+    ARRAY['full_name', 'birth_date', 'contacts', 'passport_data', 'insurance_policy_number'],
+    ARRAY['\'Иван Иванов\'', '\'1980-01-01\'', '\'89991234567\'', '\'1234 567890\'', '\'12345678901234\'']
+);
+*/
+
+-- Процедура изменения записи 
+CREATE OR REPLACE PROCEDURE update_record(table_name TEXT, column_name TEXT, new_value TEXT, key_column TEXT, key_value TEXT)
+LANGUAGE plpgsql AS $$
+BEGIN
+    EXECUTE format('UPDATE %I SET %I = %L WHERE %I = %L',
+                   table_name, column_name, new_value, key_column, key_value);
+END;
+$$;
+-- Пример: CALL update_record('patients', 'contacts', '89991112233', 'id', '1');
+
+
+-- Функция для подсчета таблиц
+CREATE OR REPLACE FUNCTION count_tables()
+RETURNS INTEGER AS $$
+DECLARE
+    table_count INTEGER;
+BEGIN
+    SELECT COUNT(*)
+    INTO table_count
+    FROM information_schema.tables
+    WHERE table_schema = 'med_schema';
+
+    RETURN table_count;
+END;
+$$ LANGUAGE plpgsql;
+-- Пример: SELECT count_tables();
+
+-- Функция для получения заголовков таблицы
+CREATE OR REPLACE FUNCTION get_table_headers(table_name TEXT)
+RETURNS TABLE(column_name TEXT) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_schema = 'med_schema' AND table_name = table_name;
+END;
+$$ LANGUAGE plpgsql;
+-- Пример: SELECT * FROM get_table_headers('patients');
+
+-- Функция для выдачи всех данных из таблицы
+CREATE OR REPLACE FUNCTION get_all_data(table_name TEXT)
+RETURNS TABLE(result RECORD) AS $$
+BEGIN
+    RETURN QUERY EXECUTE format('SELECT * FROM %I', table_name);
+END;
+$$ LANGUAGE plpgsql;
+-- Пример: SELECT * FROM get_all_data('patients');
+
+
+
+
+
+
+
+
+
+
+
