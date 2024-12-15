@@ -1,14 +1,21 @@
 from configparser import ConfigParser
 
-import psycopg2
+from sqlalchemy import create_engine, text
 
 
 class DataBaseManager:
     def __init__(self):
-        connection_params = self.__get_config()
-        self.connection = psycopg2.connect(**connection_params)
-
-        self.cursor = self.connection.cursor()
+        self.connection_params = self.__get_config()
+        self.engine = create_engine(
+            "postgresql+psycopg2://{}:{}@{}/{}".format(
+                self.connection_params["user"],
+                self.connection_params["password"],
+                self.connection_params["host"],
+                self.connection_params["database"],
+            ),
+            echo=True,
+            isolation_level="SERIALIZABLE",
+        )
 
     def __get_config(self, filename="database.ini", section="postgresql"):
         # create a parser
@@ -31,41 +38,26 @@ class DataBaseManager:
         return db_connection_info
 
     def get_tables_number(self):
-        table_count_query = """
-            SELECT COUNT(*)
-            FROM information_schema.tables
-            WHERE table_schema = 'med_schema';
-            """
-        self.cursor.execute(table_count_query)
-        table_count = self.cursor.fetchone()[0]
-        return table_count
+        query = "SELECT * FROM count_tables();"
+        with self.engine.connect() as connect:
+            tables_num = connect.execute(text(query)).fetchall()[0][0]
+            connect.commit()
+        return tables_num
 
-    def get_table_titles_and_headings(self):
+    def get_table_titles_and_headers(self):
         """
         Возвращает словарь в формате "название_таблицы": ["заголовок1", "заголовок2", ...]
         """
-        table_headings_query = """
-            SELECT table_name, column_name
-            FROM information_schema.columns
-            WHERE table_schema = 'med_schema'
-            ORDER BY table_name, ordinal_position;
-            """
-        self.cursor.execute(table_headings_query)
-        columns = self.cursor.fetchall()
-
-        # Группируем столбцы по таблицам
-        table_headings = {}
-        for table_name, column_name in columns:
-            if table_name not in table_headings:
-                table_headings[table_name] = []
-            table_headings[table_name].append(column_name)
-        return table_headings
+        query = "SELECT * FROM get_all_table_headers();"
+        tables_info = None
+        with self.engine.connect() as connect:
+            tables_info = connect.execute(text(query)).fetchall()[0][0]
+            connect.commit()
+        return tables_info
 
     def get_data_from_table(self, table_title):
-        self.cursor.execute(f"SELECT * FROM {table_title};")
-        rows = self.cursor.fetchall()
-        return rows
-
-    def disconnect(self):
-        self.cursor.close()
-        self.connection.close()
+        query = "SELECT * FROM get_all_data('{}')".format(table_title)
+        with self.engine.connect() as connect:
+            tables_info = [row[0] for row in connect.execute(text(query)).fetchall()]
+            connect.commit()
+        return tables_info

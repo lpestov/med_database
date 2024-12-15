@@ -16,7 +16,8 @@ class Tab(ttk.Frame):
             self.tree.column(table_column, anchor="center")
 
         for row in table_data:
-            self.tree.insert("", "end", values=row)
+            data = [row[key] for key in row.keys()]
+            self.tree.insert("", "end", values=data)
         self.tree.pack(fill="both", expand=True, padx=5, pady=5)
         self.autosize_table_columns(table_columns, table_data)
 
@@ -49,7 +50,7 @@ class Tab(ttk.Frame):
 
             # Получение максимальной ширины содержимого столбца
             for row in data:
-                cell_value = str(row[col_index])  # Конвертация значения в строку
+                cell_value = str(row[col])  # Конвертация значения в строку
                 cell_width = tree_font.measure(cell_value)
                 max_width = max(max_width, cell_width)
 

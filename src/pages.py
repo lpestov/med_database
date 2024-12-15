@@ -17,7 +17,7 @@ class MainPage(tk.Frame):
         menu_bar.add_cascade(label="База данных", menu=db_menu)
         self.master.config(menu=menu_bar)
 
-        tables_info = self.database_manager.get_table_titles_and_headings()
+        tables_info = self.database_manager.get_table_titles_and_headers()
 
         # Notebook для вкладок
         notebook = ttk.Notebook(self)
