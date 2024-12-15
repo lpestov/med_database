@@ -131,13 +131,32 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA med_schema TO med_user;
 -- Функции для доступа через gui
 
 -- Процедура поиска записи по ключу
-CREATE OR REPLACE FUNCTION search_by_key(table_name TEXT, column_name TEXT, key_value TEXT)
-RETURNS TABLE(result RECORD) AS $$
+CREATE OR REPLACE FUNCTION search_by_key(
+    table_name TEXT,
+    column_name TEXT,
+    search_value TEXT
+)
+RETURNS SETOF RECORD AS $$
 BEGIN
-    RETURN QUERY EXECUTE format('SELECT * FROM %I WHERE %I = %L', table_name, column_name, key_value);
+    RETURN QUERY EXECUTE FORMAT(
+        'SELECT * FROM %I WHERE %I = %L',
+        table_name,
+        column_name,
+        search_value
+    );
 END;
 $$ LANGUAGE plpgsql;
--- Пример: SELECT * FROM search_by_key('patients', 'full_name', 'Иван Иванов');
+
+/* Пример:
+SELECT * FROM search_by_key('patients', 'full_name', 'Иван Иванов') AS t(
+    id INTEGER,
+    full_name VARCHAR,
+    birth_date DATE,
+    contacts VARCHAR,
+    passport_data VARCHAR,
+    insurance_policy_number VARCHAR
+);
+*/
 
 -- Процедура удаления записи
 CREATE OR REPLACE PROCEDURE delete_record(table_name TEXT, column_name TEXT, key_value TEXT)
@@ -149,13 +168,13 @@ $$;
 -- Пример: CALL delete_record('patients', 'id', '1');
 
 -- Процедура вставки данных
-CREATE OR REPLACE FUNCTION insert_into_table(table_name TEXT, columns TEXT[], values TEXT[])
+CREATE OR REPLACE FUNCTION insert_into_table(table_name TEXT, columns TEXT[], info TEXT[])
 RETURNS VOID AS $$
 BEGIN
     EXECUTE format('INSERT INTO %I (%s) VALUES (%s)',
                    table_name,
                    array_to_string(columns, ', '),
-                   array_to_string(values, ', '));
+                   array_to_string(info, ', '));
 END;
 $$ LANGUAGE plpgsql;
 
