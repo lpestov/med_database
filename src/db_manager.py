@@ -18,13 +18,10 @@ class DataBaseManager:
         )
 
     def __get_config(self, filename="database.ini", section="postgresql"):
-        # create a parser
         parser = ConfigParser()
 
-        # read config file
         parser.read(filename)
 
-        # get section, default to postgresql
         db_connection_info = {}
         if parser.has_section(section):
             params = parser.items(section)
@@ -45,9 +42,7 @@ class DataBaseManager:
         return tables_num
 
     def get_table_titles_and_headers(self):
-        """
-        Возвращает словарь в формате "название_таблицы": ["заголовок1", "заголовок2", ...]
-        """
+        # Возвращает словарь в формате "название_таблицы": ["заголовок1", "заголовок2", ...]
         query = "SELECT * FROM get_all_table_headers();"
         tables_info = None
         with self.engine.connect() as connect:
@@ -61,3 +56,20 @@ class DataBaseManager:
             tables_info = [row[0] for row in connect.execute(text(query)).fetchall()]
             connect.commit()
         return tables_info
+
+    def add_data(self, table_name, table_headers, new_values):
+        table_headers_sql_arr = "ARRAY[{}]".format(
+            ", ".join(f"'{head}'" for head in table_headers)
+        )
+        new_values_sql_arr = "ARRAY[{}]".format(
+            ", ".join(f"'{val}'" for val in new_values)
+        )
+
+        query = (
+            f"SELECT insert_into_table('{table_name}', "
+            f"{table_headers_sql_arr}, {new_values_sql_arr})"
+        )
+
+        with self.engine.connect() as connect:
+            connect.execute(text(query))
+            connect.commit()

@@ -27,7 +27,13 @@ class MainPage(tk.Frame):
         # Подключение вкладок. В каждой вкладке таблица из БД и кнопки для манипуляции данными
         for table_title in tables_info:
             table_data = self.database_manager.get_data_from_table(table_title)
-            new_tab = Tab(notebook, tables_info[table_title], table_data)
+            new_tab = Tab(
+                notebook,
+                table_title,
+                tables_info[table_title],
+                table_data,
+                self.database_manager,
+            )
             notebook.add(new_tab, text=table_title)
 
     def dummy_action(self):
