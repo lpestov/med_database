@@ -1,4 +1,5 @@
 import tkinter as tk
+import tkinter.messagebox as ms
 from tkinter import font as tkfont
 from tkinter import ttk
 
@@ -64,7 +65,6 @@ class Tab(ttk.Frame):
         self.tree.pack(fill="both", expand=True, padx=5, pady=5)
         self.autosize_table_columns()
 
-    # TODO: убрать ввод ID (должен сам вычисляться в БД)
     def add_table_data(self):
         input_table_win = tk.Toplevel(self)
         input_table_win.title("New Input Data")
@@ -88,13 +88,19 @@ class Tab(ttk.Frame):
         save_button = tk.Button(
             input_table_win,
             text="Save",
-            command=lambda: self.db_manager.add_data(
-                self.table_name,
-                table_headers_without_id_col,
-                [e.get() for e in entries.values()],
-            ),
+            command=lambda: self.save_table_data(table_headers_without_id_col, entries),
         )
         save_button.grid(row=2, column=0, columnspan=len(self.table_columns), pady=10)
+
+    def save_table_data(self, headers, entries):
+        try:
+            self.db_manager.add_data(
+                self.table_name, headers, [e.get() for e in entries.values()]
+            )
+            ms.showinfo(title="Saved", text="Data saved successfully")
+        except Exception as e:
+            ms.showerror(title="Saving data error", message="Check input data")
+            print(e)
 
     def dummy_action(self):
         print("Button clicked!")

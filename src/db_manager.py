@@ -2,6 +2,8 @@ from configparser import ConfigParser
 
 from sqlalchemy import create_engine, text
 
+from sql_injection_check import is_possible_sql_injection
+
 
 class DataBaseManager:
     def __init__(self):
@@ -58,6 +60,9 @@ class DataBaseManager:
         return tables_info
 
     def add_data(self, table_name, table_headers, new_values):
+        if any(is_possible_sql_injection(val) for val in new_values):
+            raise Exception("Possible SQL-injection detected")
+
         table_headers_sql_arr = "ARRAY[{}]".format(
             ", ".join(f"'{head}'" for head in table_headers)
         )
