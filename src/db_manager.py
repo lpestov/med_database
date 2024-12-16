@@ -78,3 +78,15 @@ class DataBaseManager:
         with self.engine.connect() as connect:
             connect.execute(text(query))
             connect.commit()
+
+    def update_record(self, table_name, col_name, new_val, key_col, key_val):
+        if any(is_possible_sql_injection(val) for val in new_val):
+            raise Exception("Possible SQL-injection detected")
+
+        query = "CALL update_record('{}', '{}', '{}', '{}', '{}')".format(
+            table_name, col_name, new_val, key_col, key_val
+        )
+
+        with self.engine.connect() as connect:
+            connect.execute(text(query))
+            connect.commit()

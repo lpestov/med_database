@@ -28,7 +28,9 @@ class Tab(ttk.Frame):
 
         # Кнопки
         add_button = tk.Button(buttons_frame, text="Add", command=self.add_table_data)
-        edit_button = tk.Button(buttons_frame, text="Edit", command=self.dummy_action)
+        edit_button = tk.Button(
+            buttons_frame, text="Edit", command=self.edit_table_cortege
+        )
         delete_button = tk.Button(
             buttons_frame, text="Delete", command=self.dummy_action
         )
@@ -97,15 +99,83 @@ class Tab(ttk.Frame):
         save_button = tk.Button(
             input_table_win,
             text="Save",
-            command=lambda: self.save_table_data(table_headers_without_id_col, entries),
+            command=lambda: self.save_added_table_data(
+                table_headers_without_id_col, entries
+            ),
         )
         save_button.grid(row=2, column=0, columnspan=len(self.table_columns), pady=10)
 
-    def save_table_data(self, headers, entries):
+    def save_added_table_data(self, headers, entries):
         try:
             self.db_manager.add_data(
                 self.table_name, headers, [e.get() for e in entries.values()]
             )
+            ms.showinfo(title="Saved", message="Data saved successfully")
+            self.update_displayed_table_data()
+        except Exception as e:
+            ms.showerror(title="Saving data error", message="Check input data")
+            print(e)
+
+    def edit_table_cortege(self):
+
+        selected_cortege = self.tree.selection()
+
+        if not selected_cortege:
+            ms.showerror(title="Error", message="No selected cortege")
+            return
+
+        selected_cortege = self.tree.item(selected_cortege[0], "values")
+
+        input_table_win = tk.Toplevel(self)
+        input_table_win.title("Edit Data")
+
+        entries = {}
+        default_entries_vals = {}
+        table_headers_without_id_col = list(
+            filter(lambda x: x != "id", self.table_columns)
+        )
+
+        # Создание заголовков таблицы для ввода и полей для ввода
+        for col_idx, col in enumerate(table_headers_without_id_col):
+            input_table_header = tk.Label(input_table_win, text=col)
+            input_table_header.grid(row=0, column=col_idx, padx=5, pady=5)
+
+            if col == "status":
+                options = ["запланировано", "пропущено", "отменено", "завершено"]
+                selected_option = tk.StringVar(value=selected_cortege[1 + col_idx])
+                status_option_menu = tk.OptionMenu(
+                    input_table_win, selected_option, *options
+                )
+                entries[col] = selected_option
+                default_entries_vals[col] = selected_option.get()
+                status_option_menu.grid(row=1, column=col_idx, padx=5, pady=6)
+                continue
+
+            entry = tk.Entry(input_table_win, width=15, justify="center")
+            entry.insert(0, selected_cortege[1 + col_idx])
+
+            entries[col] = entry
+            default_entries_vals[col] = entry.get()
+            entry.grid(row=1, column=col_idx, padx=5, pady=6)
+
+        cortege_id = selected_cortege[0]
+
+        save_button = tk.Button(
+            input_table_win,
+            text="Save",
+            command=lambda: self.save_edited_cortege(
+                cortege_id, entries, default_entries_vals
+            ),
+        )
+        save_button.grid(row=2, column=0, columnspan=len(self.table_columns), pady=10)
+
+    def save_edited_cortege(self, cortege_id, entries, default_entries):
+        try:
+            for header in entries.keys():
+                if entries[header].get() != default_entries[header]:
+                    self.db_manager.update_record(
+                        self.table_name, header, entries[header].get(), "id", cortege_id
+                    )
             ms.showinfo(title="Saved", message="Data saved successfully")
             self.update_displayed_table_data()
         except Exception as e:
