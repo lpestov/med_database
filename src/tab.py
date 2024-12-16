@@ -65,6 +65,15 @@ class Tab(ttk.Frame):
         self.tree.pack(fill="both", expand=True, padx=5, pady=5)
         self.autosize_table_columns()
 
+    def update_displayed_table_data(self):
+        # Очистка Treeview
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+        # Обновление данных
+        self.table_data = self.db_manager.get_data_from_table(self.table_name)
+        self.display_table_data()
+
     def add_table_data(self):
         input_table_win = tk.Toplevel(self)
         input_table_win.title("New Input Data")
@@ -97,7 +106,8 @@ class Tab(ttk.Frame):
             self.db_manager.add_data(
                 self.table_name, headers, [e.get() for e in entries.values()]
             )
-            ms.showinfo(title="Saved", text="Data saved successfully")
+            ms.showinfo(title="Saved", message="Data saved successfully")
+            self.update_displayed_table_data()
         except Exception as e:
             ms.showerror(title="Saving data error", message="Check input data")
             print(e)

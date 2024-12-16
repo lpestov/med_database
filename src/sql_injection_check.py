@@ -26,7 +26,6 @@ sql_keywords = [
     "BY",
     "GROUP",
     "HAVING",
-    "--",
     ";",
     "/*",
     "*/",
@@ -58,7 +57,7 @@ sql_keywords = [
 
 
 def is_possible_sql_injection(usr_input):
-    lower_input = usr_input.lower()
+    lower_input = [inp.lower() for inp in usr_input.split()]
     for keyword in sql_keywords:
         if keyword.lower() in lower_input:
             return True  # Найдена потенциальная угроза
