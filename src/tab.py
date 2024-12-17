@@ -85,12 +85,22 @@ class Tab(ttk.Frame):
 
         entries = {}
 
-        table_headers_without_id_col = list(
-            filter(lambda x: x != "id", self.table_columns)
+        table_headers_without_id_col_and_age = list(
+            filter(lambda x: x != "id" and x != "age", self.table_columns)
         )
 
         # Создание заголовков таблицы для ввода и полей для ввода
-        for col_idx, col in enumerate(table_headers_without_id_col):
+        for col_idx, col in enumerate(table_headers_without_id_col_and_age):
+            if col == "status":
+                options = ["запланировано", "пропущено", "отменено", "завершено"]
+                selected_option = tk.StringVar(value=options[0])
+                status_option_menu = tk.OptionMenu(
+                    input_table_win, selected_option, *options
+                )
+                entries[col] = selected_option
+                status_option_menu.grid(row=1, column=col_idx, padx=5, pady=6)
+                continue
+
             input_table_header = tk.Label(input_table_win, text=col)
             input_table_header.grid(row=0, column=col_idx, padx=5, pady=5)
 
@@ -103,7 +113,7 @@ class Tab(ttk.Frame):
             input_table_win,
             text="Save",
             command=lambda: self.save_added_table_data(
-                table_headers_without_id_col, entries
+                table_headers_without_id_col_and_age, entries
             ),
         )
         save_button.grid(row=2, column=0, columnspan=len(self.table_columns), pady=10)
@@ -119,6 +129,7 @@ class Tab(ttk.Frame):
             ms.showerror(title="Saving data error", message="Check input data")
             print(e)
 
+    # TODO: убрать ввод возраста пациента (высчитывается сам в БД)
     def edit_table_cortege(self):
 
         selected_cortege = self.tree.selection()
@@ -140,6 +151,9 @@ class Tab(ttk.Frame):
 
         # Создание заголовков таблицы для ввода и полей для ввода
         for col_idx, col in enumerate(table_headers_without_id_col):
+            if col == "age":
+                continue
+
             input_table_header = tk.Label(input_table_win, text=col)
             input_table_header.grid(row=0, column=col_idx, padx=5, pady=5)
 
