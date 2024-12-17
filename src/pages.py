@@ -20,21 +20,27 @@ class MainPage(tk.Frame):
         tables_info = self.database_manager.get_table_titles_and_headers()
 
         # Notebook для вкладок
-        notebook = ttk.Notebook(self)
-        notebook.pack(fill="both", expand=True)
+        self.notebook = ttk.Notebook(self)
+        self.notebook.pack(fill="both", expand=True)
         self.tabs = []
 
         # Подключение вкладок. В каждой вкладке таблица из БД и кнопки для манипуляции данными
         for table_title in tables_info:
             table_data = self.database_manager.get_data_from_table(table_title)
             new_tab = Tab(
-                notebook,
+                self.notebook,
+                self,
                 table_title,
                 tables_info[table_title],
                 table_data,
                 self.database_manager,
             )
-            notebook.add(new_tab, text=table_title)
+            self.notebook.add(new_tab, text=table_title)
+
+    def update_all_tables(self):
+        for tab_id in self.notebook.tabs():
+            tab = self.notebook.nametowidget(tab_id)
+            tab.update_displayed_table_data()
 
     def dummy_action(self):
         print("Clicked!")

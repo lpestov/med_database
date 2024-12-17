@@ -5,8 +5,11 @@ from tkinter import ttk
 
 
 class Tab(ttk.Frame):
-    def __init__(self, master, table_name, table_columns, table_data, db_manager):
+    def __init__(
+        self, master, notebook, table_name, table_columns, table_data, db_manager
+    ):
         super().__init__(master)
+        self.notebook = notebook
         self.table_name = table_name
         self.table_columns = table_columns
         self.table_data = table_data
@@ -32,7 +35,7 @@ class Tab(ttk.Frame):
             buttons_frame, text="Edit", command=self.edit_table_cortege
         )
         delete_button = tk.Button(
-            buttons_frame, text="Delete", command=self.dummy_action
+            buttons_frame, text="Delete", command=self.delete_record
         )
         find_button = tk.Button(buttons_frame, text="Find", command=self.dummy_action)
 
@@ -180,6 +183,27 @@ class Tab(ttk.Frame):
             self.update_displayed_table_data()
         except Exception as e:
             ms.showerror(title="Saving data error", message="Check input data")
+            print(e)
+
+    def delete_record(self):
+        selected_cortege = self.tree.selection()
+
+        if not selected_cortege:
+            ms.showerror(title="Error", message="No selected cortege")
+            return
+
+        selected_cortege = self.tree.item(selected_cortege[0], "values")
+
+        if not ms.askyesno(
+            title="Are you sure?", message="Do you really want to delete this cortege?"
+        ):
+            return
+
+        try:
+            self.db_manager.delete_record(self.table_name, "id", selected_cortege[0])
+            self.notebook.update_all_tables()
+        except Exception as e:
+            ms.showerror(title="Error", message="Delete error")
             print(e)
 
     def dummy_action(self):

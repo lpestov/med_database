@@ -90,3 +90,11 @@ class DataBaseManager:
         with self.engine.connect() as connect:
             connect.execute(text(query))
             connect.commit()
+
+    def delete_record(self, table_name, key_col, key_val):
+        query = "CALL delete_record('{}', '{}', '{}')".format(
+            table_name, key_col, key_val
+        )
+        with self.engine.connect() as connect:
+            connect.execute(text(query))
+            connect.commit()
