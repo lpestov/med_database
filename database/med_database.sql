@@ -191,6 +191,16 @@ END;
 $$;
 -- Пример: CALL update_record('patients', 'contacts', '89991112233', 'id', '1');
 
+-- Процедура для удаления схемы с каскадным удалением всех таблиц
+CREATE OR REPLACE PROCEDURE drop_database_schema()
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- Удаление схемы со всеми объектами
+    EXECUTE 'DROP SCHEMA IF EXISTS med_schema CASCADE';
+    RAISE NOTICE 'Схема med_schema и все связанные таблицы удалены.';
+END;
+$$;
 
 -- Функция для подсчета таблиц
 CREATE OR REPLACE FUNCTION count_tables()
@@ -242,3 +252,47 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 -- Пример: SELECT * FROM get_all_data('patients');
+
+-- Процедура для заполнения данными
+CREATE OR REPLACE PROCEDURE seed_data()
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- Заполняем таблицу "Поликлиника"
+    INSERT INTO med_schema.clinic (name, address, phone) VALUES
+        ('Поликлиника №1', 'г. Нижний Новгород, ул. Ленина, д. 1', '8311234567'),
+        ('Поликлиника №2', 'г. Нижний Новгород, ул. Белинского, д. 10', '8312345678'),
+        ('Поликлиника №3', 'г. Нижний Новгород, ул. Горького, д. 15', '8313456789');
+    RAISE NOTICE 'Таблица clinic заполнена.';
+
+    -- Заполняем таблицу "Доктора"
+    INSERT INTO med_schema.doctors (full_name, specialization, contacts, clinic_id) VALUES
+        ('Иванов Иван Иванович', 'Терапевт', '89101234567', 1),
+        ('Петров Петр Петрович', 'Хирург', '89109876543', 2),
+        ('Сидоров Сидор Сидорович', 'Кардиолог', '89201234567', 3);
+    RAISE NOTICE 'Таблица doctors заполнена.';
+
+    -- Заполняем таблицу "Пациенты"
+    INSERT INTO med_schema.patients (full_name, birth_date, contacts, passport_data, insurance_policy_number) VALUES
+        ('Алексеева Анна Сергеевна', '1985-05-12', '89031234567', '1234 567890', '12345678'),
+        ('Михайлов Михаил Андреевич', '1990-02-28', '89041234567', '2345 678901', '23456789'),
+        ('Васильева Василиса Ивановна', '2000-10-15', '89051234567', '3456 789012', '34567890');
+    RAISE NOTICE 'Таблица patients заполнена.';
+
+    -- Заполняем таблицу "Записи на прием"
+    INSERT INTO med_schema.appointments (patient_id, doctor_id, appointment_date, status, clinic_id) VALUES
+        (1, 1, '2024-12-01', 'запланировано', 1),
+        (2, 2, '2024-11-15', 'запланировано', 2),
+        (3, 3, '2024-11-10', 'запланировано', 3);
+    RAISE NOTICE 'Таблица appointments заполнена.';
+
+    -- Заполняем таблицу "Медицинская книжка"
+    INSERT INTO med_schema.medical_records (patient_id, conclusion, record_date) VALUES
+        (1, 'Общее состояние хорошее. Рекомендовано продолжить лечение.', '2024-11-01'),
+        (2, 'Необходима операция на коленном суставе.', '2024-11-10'),
+        (3, 'Проведена успешная терапия. Пациентка в стабильном состоянии.', '2024-11-05');
+    RAISE NOTICE 'Таблица medical_records заполнена.';
+END;
+$$;
+-- Пример: CALL seed_data();
+
