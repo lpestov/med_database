@@ -37,7 +37,9 @@ class Tab(ttk.Frame):
         delete_button = tk.Button(
             buttons_frame, text="Delete", command=self.delete_record
         )
-        find_button = tk.Button(buttons_frame, text="Find", command=self.dummy_action)
+        find_button = tk.Button(
+            buttons_frame, text="Find", command=self.find_cortege_window
+        )
 
         add_button.pack(side="left", padx=5)
         edit_button.pack(side="left", padx=5)
@@ -129,7 +131,6 @@ class Tab(ttk.Frame):
             ms.showerror(title="Saving data error", message="Check input data")
             print(e)
 
-    # TODO: убрать ввод возраста пациента (высчитывается сам в БД)
     def edit_table_cortege(self):
 
         selected_cortege = self.tree.selection()
@@ -219,6 +220,53 @@ class Tab(ttk.Frame):
         except Exception as e:
             ms.showerror(title="Error", message="Delete error")
             print(e)
+
+    def find_cortege_window(self):
+        input_win = tk.Toplevel(self)
+        input_win.title("Find a record")
+
+        # Лейбл для столбца, по которому ищем
+        key_column_label = tk.Label(input_win, text="Столбец для поиска:")
+        key_column_label.grid(row=0, column=0, padx=5, pady=5)
+
+        # Лейбл для значения, которое ищем
+        key_value_label = tk.Label(input_win, text="Значение для поиска:")
+        key_value_label.grid(row=0, column=1, padx=5, pady=5)
+
+        # Меню выбора ключевого столбца
+        key_column = tk.StringVar(value=self.table_columns[0])
+        key_column_selection_menu = tk.OptionMenu(
+            input_win, key_column, *self.table_columns
+        )
+        key_column_selection_menu.config(width=15)
+        key_column_selection_menu.grid(row=1, column=0, padx=5, pady=5)
+
+        # Поле для ввода поискового значения
+        key_value_entry = tk.Entry(input_win, width=15, justify="center")
+        key_value_entry.grid(row=1, column=1, padx=5, pady=5)
+
+        find_button = tk.Button(
+            input_win,
+            text="Find!",
+            command=lambda: self.find_cortege(key_column.get(), key_value_entry.get()),
+        )
+        find_button.grid(row=2, column=0, columnspan=2, pady=10)
+
+    def find_cortege(self, key_col, key_val):
+        try:
+            found_records = self.db_manager.find_record(
+                self.table_name, key_col, key_val
+            )
+            self.show_found_records(found_records)
+        except Exception as e:
+            ms.showerror(title="Search Error", message="Check input data")
+            print(e)
+
+    def show_found_records(self, records):
+        if not records:
+            ms.showinfo(message="Nothing was found")
+            return
+        print(records)
 
     def dummy_action(self):
         print("Button clicked!")
