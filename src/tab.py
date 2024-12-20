@@ -14,6 +14,8 @@ class Tab(ttk.Frame):
         self.table_columns = table_columns
         self.table_data = table_data
         self.db_manager = db_manager
+        self.currentHighlightedRecordID = -1
+        self.found_records = []
         self.setup_ui()
 
     def setup_ui(self):
@@ -224,14 +226,39 @@ class Tab(ttk.Frame):
     def find_cortege_window(self):
         input_win = tk.Toplevel(self)
         input_win.title("Find a record")
+        input_win.protocol(
+            "WM_DELETE_WINDOW", lambda: self.destroy_search_top_win(input_win)
+        )
+
+        # Настройка сетки 4 х 2 для виджетов
+        for i in range(2):
+            input_win.grid_columnconfigure(i, weight=1)
+        for i in range(4):
+            input_win.grid_rowconfigure(i, weight=1)
+
+        # Кнопки для подсвечивания предыдущей / следующей найденной записи
+        next_prev_btns = {
+            "next": tk.Button(
+                input_win, text="next", state="disabled", command=self.next_found_record
+            ),
+            "prev": tk.Button(
+                input_win,
+                text="previous",
+                state="disabled",
+                command=self.prev_found_record,
+            ),
+        }
+
+        next_prev_btns["prev"].grid(row=2, column=0, padx=5, pady=5, sticky="nsew")
+        next_prev_btns["next"].grid(row=2, column=1, padx=5, pady=5, sticky="nsew")
 
         # Лейбл для столбца, по которому ищем
         key_column_label = tk.Label(input_win, text="Столбец для поиска:")
-        key_column_label.grid(row=0, column=0, padx=5, pady=5)
+        key_column_label.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
 
         # Лейбл для значения, которое ищем
         key_value_label = tk.Label(input_win, text="Значение для поиска:")
-        key_value_label.grid(row=0, column=1, padx=5, pady=5)
+        key_value_label.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
 
         # Меню выбора ключевого столбца
         key_column = tk.StringVar(value=self.table_columns[0])
@@ -239,34 +266,72 @@ class Tab(ttk.Frame):
             input_win, key_column, *self.table_columns
         )
         key_column_selection_menu.config(width=15)
-        key_column_selection_menu.grid(row=1, column=0, padx=5, pady=5)
+        key_column_selection_menu.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
 
         # Поле для ввода поискового значения
         key_value_entry = tk.Entry(input_win, width=15, justify="center")
-        key_value_entry.grid(row=1, column=1, padx=5, pady=5)
+        key_value_entry.grid(row=1, column=1, padx=5, pady=5, sticky="nsew")
 
         find_button = tk.Button(
             input_win,
             text="Find!",
-            command=lambda: self.find_cortege(key_column.get(), key_value_entry.get()),
+            command=lambda: self.find_cortege(
+                key_column.get(), key_value_entry.get(), next_prev_btns
+            ),
         )
-        find_button.grid(row=2, column=0, columnspan=2, pady=10)
+        find_button.grid(row=3, column=0, columnspan=2, pady=10, sticky="nsew")
 
-    def find_cortege(self, key_col, key_val):
+    def find_cortege(self, key_col, key_val, next_prev_btns):
         try:
-            found_records = self.db_manager.find_record(
+            self.found_records = self.db_manager.find_record(
                 self.table_name, key_col, key_val
             )
-            self.show_found_records(found_records)
+            self.show_found_records(self.found_records, next_prev_btns)
         except Exception as e:
             ms.showerror(title="Search Error", message="Check input data")
             print(e)
 
-    def show_found_records(self, records):
+    def show_found_records(self, records, next_prev_btns):
         if not records:
             ms.showinfo(message="Nothing was found")
             return
+        found_records_num = len(records)
+        ms.showinfo(
+            title="Found Message Number", message=f"Found {found_records_num} records"
+        )
+
+        if found_records_num > 1:
+            next_prev_btns["prev"]["state"] = "normal"
+            next_prev_btns["next"]["state"] = "normal"
+
+        self.highlight_record(records[0]["id"])
         print(records)
+
+    def highlight_record(self, record_id):
+        tree_children = self.tree.get_children()
+        self.tree.selection_remove(*tree_children)
+        self.tree.selection_set(tree_children[record_id - 1])
+        self.currentHighlightedRecordID = record_id
+        self.tree.see(tree_children[record_id - 1])
+
+    def destroy_search_top_win(self, top):
+        self.found_records = []
+        self.currentHighlightedRecordID = -1
+        top.destroy()
+
+    def next_found_record(self):
+        if self.found_records:
+            self.currentHighlightedRecordID = self.found_records[
+                (self.currentHighlightedRecordID + 1) % len(self.found_records)
+            ]["id"]
+            self.highlight_record(self.currentHighlightedRecordID)
+
+    def prev_found_record(self):
+        if self.found_records:
+            self.currentHighlightedRecordID = self.found_records[
+                (self.currentHighlightedRecordID - 1) % len(self.found_records)
+            ]["id"]
+            self.highlight_record(self.currentHighlightedRecordID)
 
     def dummy_action(self):
         print("Button clicked!")
