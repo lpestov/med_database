@@ -14,11 +14,11 @@ DROP SCHEMA IF EXISTS init CASCADE;
 DROP DATABASE IF EXISTS med_database;
 DROP ROLE IF EXISTS med_user;
 
--- Создаем пользователя с ограниченными правами для использования (до этого работает от postgres)
+-- Создаем пользователя с ограниченными правами для использования
 CREATE USER med_user WITH PASSWORD 'qwerty';
 
 -- Создаем базу данных
-CREATE DATABASE med_database OWNER med_user;
+CREATE DATABASE med_database OWNER med_procedures_owner;
 
 -- Подключаемся к базе данных
 \c med_database
@@ -33,13 +33,13 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 -- Создаем схему для таблиц
-CREATE SCHEMA tables AUTHORIZATION med_user;
+CREATE SCHEMA tables;
 
 -- Создаем схему для процедур и функций
-CREATE SCHEMA procedures AUTHORIZATION med_user;
+CREATE SCHEMA procedures;
 
 -- Создаем схему для инициализации
-CREATE SCHEMA init AUTHORIZATION med_user;
+CREATE SCHEMA init;
 
 -- Установим search_path
 ALTER DATABASE med_database SET search_path TO tables, procedures, init, public;
@@ -50,6 +50,11 @@ GRANT CONNECT ON DATABASE med_database TO med_user;
 
 -- Переходим в схему таблиц и создаем там все таблицы
 SET search_path TO tables, procedures, init, public;
+
+-- Назначаем med_procedures_owner права на таблицы, функции и процедуры
+ALTER SCHEMA tables OWNER TO med_procedures_owner;
+ALTER SCHEMA procedures OWNER TO med_procedures_owner;
+ALTER SCHEMA init OWNER TO med_procedures_owner;
 
 -- Таблица "Пациенты"
 CREATE TABLE tables.patients (
@@ -97,6 +102,11 @@ CREATE TABLE tables.medical_records (
     record_date DATE NOT NULL
 );
 
+ALTER TABLE tables.clinic OWNER TO med_procedures_owner;
+ALTER TABLE tables.patients OWNER TO med_procedures_owner;
+ALTER TABLE tables.doctors OWNER TO med_procedures_owner;
+ALTER TABLE tables.appointments OWNER TO med_procedures_owner;
+ALTER TABLE tables.medical_records OWNER TO med_procedures_owner;
 -- Для ускорения поиска по имени пациента создаем индекс:
 CREATE INDEX idx_patients_full_name ON tables.patients(full_name);
 
@@ -108,7 +118,9 @@ SET search_path TO procedures, tables, init, public;
 
 -- Функция для расчета возраста
 CREATE OR REPLACE FUNCTION procedures.calculate_age()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+SECURITY DEFINER -- процедура выполняется с правами владельца
+AS $$
 BEGIN
     NEW.age := DATE_PART('year', AGE(NEW.birth_date));
     RETURN NEW;
@@ -123,7 +135,9 @@ EXECUTE FUNCTION procedures.calculate_age();
 
 -- Триггер для изменения статуса записи
 CREATE OR REPLACE FUNCTION procedures.update_appointment_status()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+SECURITY DEFINER
+AS $$
 BEGIN
     IF NEW.appointment_date < CURRENT_DATE AND NEW.status = 'запланировано' THEN
         NEW.status := 'пропущено';
@@ -144,7 +158,9 @@ CREATE OR REPLACE FUNCTION procedures.search_by_key(
     column_name TEXT,
     search_value TEXT
 )
-RETURNS TABLE(result JSON) AS $$
+RETURNS TABLE(result JSON)
+SECURITY DEFINER
+AS $$
 BEGIN
     RETURN QUERY EXECUTE FORMAT(
         'SELECT row_to_json(t) FROM tables.%I t WHERE %I = %L',
@@ -161,6 +177,7 @@ SELECT * FROM procedures.search_by_key('patients', 'full_name', 'Алексее�
 
 -- Процедура удаления записи
 CREATE OR REPLACE PROCEDURE procedures.delete_record(table_name TEXT, column_name TEXT, key_value TEXT)
+SECURITY DEFINER
 LANGUAGE plpgsql AS $$
 BEGIN
     EXECUTE format('DELETE FROM tables.%I WHERE %I = %L', table_name, column_name, key_value);
@@ -169,8 +186,9 @@ $$;
 -- Пример: CALL procedures.delete_record('patients', 'id', '1');
 
 -- Процедура вставки данных
-CREATE OR REPLACE FUNCTION procedures.insert_into_table(table_name TEXT, columns TEXT[], info TEXT[])
-RETURNS VOID AS $$
+CREATE OR REPLACE PROCEDURE procedures.insert_into_table(table_name TEXT, columns TEXT[], info TEXT[])
+SECURITY DEFINER
+AS $$
 BEGIN
     EXECUTE format(
         'INSERT INTO tables.%I (%s) VALUES (%s)',
@@ -191,6 +209,7 @@ SELECT procedures.insert_into_table(
 
 -- Процедура изменения записи
 CREATE OR REPLACE PROCEDURE procedures.update_record(table_name TEXT, column_name TEXT, new_value TEXT, key_column TEXT, key_value TEXT)
+SECURITY DEFINER
 LANGUAGE plpgsql AS $$
 BEGIN
     EXECUTE format('UPDATE tables.%I SET %I = %L WHERE %I = %L',
@@ -201,10 +220,10 @@ $$;
 
 -- Процедура для удаления схемы с каскадным удалением всех таблиц
 CREATE OR REPLACE PROCEDURE procedures.drop_database_schema()
+SECURITY DEFINER 
 LANGUAGE plpgsql
 AS $$
 BEGIN
-    -- Удаление схемы со всеми объектами
     EXECUTE 'DROP SCHEMA IF EXISTS tables CASCADE';
     RAISE NOTICE 'Схема tables и все связанные таблицы удалены.';
 END;
@@ -216,6 +235,7 @@ CREATE OR REPLACE FUNCTION procedures.count_tables()
 RETURNS INTEGER AS $$
 DECLARE
     table_count INTEGER;
+SECURITY DEFINER
 BEGIN
     SELECT COUNT(*)
     INTO table_count
@@ -232,6 +252,7 @@ CREATE OR REPLACE FUNCTION procedures.get_all_table_headers()
 RETURNS JSON AS $$
 DECLARE
     headers JSON;
+SECURITY DEFINER
 BEGIN
     SELECT json_object_agg(
         table_name,
@@ -256,6 +277,7 @@ $$ LANGUAGE plpgsql;
 -- Функция для выдачи всех данных из таблицы
 CREATE OR REPLACE FUNCTION procedures.get_all_data(table_name TEXT)
 RETURNS SETOF JSON AS $$
+SECURITY DEFINER
 BEGIN
     RETURN QUERY EXECUTE format('SELECT row_to_json(t) FROM tables.%I AS t', table_name);
 END;
@@ -264,6 +286,7 @@ $$ LANGUAGE plpgsql;
 
 -- Процедура для заполнения данными
 CREATE OR REPLACE PROCEDURE procedures.seed_data()
+SECURITY DEFINER
 LANGUAGE plpgsql
 AS $$
 BEGIN
@@ -308,36 +331,51 @@ $$;
 -- Создаем процедуру инициализации в схеме init
 SET search_path TO init, tables, procedures, public;
 
+ALTER FUNCTION procedures.calculate_age() OWNER TO med_procedures_owner;
+ALTER FUNCTION procedures.update_appointment_status() OWNER TO med_procedures_owner;
+ALTER FUNCTION procedures.search_by_key(text, text, text) OWNER TO med_procedures_owner;
+ALTER PROCEDURE procedures.delete_record(text, text, text) OWNER TO med_procedures_owner;
+ALTER PROCEDURE procedures.insert_into_table(text, text[], text[]) OWNER TO med_procedures_owner;
+ALTER PROCEDURE procedures.update_record(text, text, text, text, text) OWNER TO med_procedures_owner;
+ALTER PROCEDURE procedures.drop_database_schema() OWNER TO med_procedures_owner;
+ALTER FUNCTION procedures.count_tables() OWNER TO med_procedures_owner;
+ALTER FUNCTION procedures.get_all_table_headers() OWNER TO med_procedures_owner;
+ALTER FUNCTION procedures.get_all_data(text) OWNER TO med_procedures_owner;
+ALTER PROCEDURE procedures.seed_data() OWNER TO med_procedures_owner;
+
 CREATE OR REPLACE PROCEDURE init.initialize_database()
 LANGUAGE plpgsql
 AS $$
 BEGIN
-  -- Даем пользователю права на схему с таблицами
-  GRANT USAGE ON SCHEMA tables TO med_user;
-  GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA tables TO med_user;
-  GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA tables TO med_user;
+    -- Даем пользователю права на схему с таблицами
+    GRANT USAGE ON SCHEMA tables TO med_user;
+    -- Даем права на таблицы
+    GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA tables TO med_user;
 
-  -- Даем пользователю права на схему procedures (пока что только на использование, все остальное на уровне конкретных процедур)
-  GRANT USAGE ON SCHEMA procedures TO med_user;
-  
-  -- Даем права на отдельные процедуры
-  GRANT EXECUTE ON PROCEDURE procedures.delete_record(TEXT, TEXT, TEXT) TO med_user;
-  GRANT EXECUTE ON FUNCTION procedures.insert_into_table(TEXT, TEXT[], TEXT[]) TO med_user;
-  GRANT EXECUTE ON PROCEDURE procedures.update_record(TEXT, TEXT, TEXT, TEXT, TEXT) TO med_user;
-  GRANT EXECUTE ON PROCEDURE procedures.drop_database_schema() TO med_user;
+    -- Даем права на последовательности
+    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA tables TO med_user;
 
-  GRANT EXECUTE ON FUNCTION procedures.search_by_key(TEXT, TEXT, TEXT) TO med_user;
-  GRANT EXECUTE ON FUNCTION procedures.count_tables() TO med_user;
-  GRANT EXECUTE ON FUNCTION procedures.get_all_table_headers() TO med_user;
-  GRANT EXECUTE ON FUNCTION procedures.get_all_data(TEXT) TO med_user;
-  GRANT EXECUTE ON PROCEDURE procedures.seed_data() TO med_user;
-  
-  -- Заполнение данными
-  CALL procedures.seed_data();
-  
-  RAISE NOTICE 'База данных инициализирована.';
+    -- Даем пользователю права на схему procedures (пока что только на использование, все остальное на уровне конкретных процедур)
+    GRANT USAGE ON SCHEMA procedures TO med_user;
+    
+    -- Даем права на отдельные процедуры
+    GRANT EXECUTE ON PROCEDURE procedures.delete_record(TEXT, TEXT, TEXT) TO med_user;
+    GRANT EXECUTE ON PROCEDURE procedures.insert_into_table(TEXT, TEXT[], TEXT[]) TO med_user;
+    GRANT EXECUTE ON PROCEDURE procedures.update_record(TEXT, TEXT, TEXT, TEXT, TEXT) TO med_user;
+    GRANT EXECUTE ON FUNCTION procedures.search_by_key(TEXT, TEXT, TEXT) TO med_user;
+    GRANT EXECUTE ON FUNCTION procedures.count_tables() TO med_user;
+    GRANT EXECUTE ON FUNCTION procedures.get_all_table_headers() TO med_user;
+    GRANT EXECUTE ON FUNCTION procedures.get_all_data(TEXT) TO med_user;
+    -- GRANT EXECUTE ON PROCEDURE procedures.drop_database_schema() TO med_user; лучше не надо давать такое право
+    -- GRANT EXECUTE ON PROCEDURE procedures.seed_data() TO med_user; наверно тоже не стоит, заполним один раз
+    
+    -- Заполнение данными
+    CALL procedures.seed_data();
+    
+    RAISE NOTICE 'База данных инициализирована.';
 END;
 $$;
 
 -- Вызов процедуры инициализации
 -- CALL init.initialize_database();
+
