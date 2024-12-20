@@ -100,4 +100,14 @@ class DataBaseManager:
             connect.commit()
 
     def find_record(self, table_name, key_col, key_val):
-        pass
+        if any(is_possible_sql_injection(val) for val in key_val.split()):
+            raise Exception("Possible SQL-injection detected")
+
+        query = "SELECT * FROM search_by_key('{}', '{}', '{}');".format(
+            table_name, key_col, key_val
+        )
+
+        with self.engine.connect() as connect:
+            found_records = connect.execute(text(query)).fetchall()
+            connect.commit()
+        return [found_record[0] for found_record in found_records]
