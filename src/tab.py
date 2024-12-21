@@ -42,14 +42,15 @@ class Tab(ttk.Frame):
         find_button = tk.Button(
             buttons_frame, text="Find", command=self.find_cortege_window
         )
-        find_button = tk.Button(
-            buttons_frame, text="Find", command=self.find_cortege_window
+        clear_table_button = tk.Button(
+            buttons_frame, text="Clear Table", command=self.dummy_action
         )
 
         add_button.pack(side="left", padx=5)
         edit_button.pack(side="left", padx=5)
         delete_button.pack(side="left", padx=5)
         find_button.pack(side="left", padx=5)
+        clear_table_button.pack(side="left", padx=5)
 
     def autosize_table_columns(self):
         style = ttk.Style()

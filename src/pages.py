@@ -12,9 +12,9 @@ class MainPage(tk.Frame):
 
         menu_bar = tk.Menu(self)
         db_menu = tk.Menu(menu_bar, tearoff=0)
-        db_menu.add_command(label="Создать базу данных", command=self.dummy_action)
-        db_menu.add_command(label="Удалить базу данных", command=self.dummy_action)
-        menu_bar.add_cascade(label="База данных", menu=db_menu)
+        db_menu.add_command(label="Seed database", command=self.dummy_action)
+        db_menu.add_command(label="Clear all tables", command=self.dummy_action)
+        menu_bar.add_cascade(label="Settings", menu=db_menu)
         self.master.config(menu=menu_bar)
 
         tables_info = self.database_manager.get_table_titles_and_headers()
