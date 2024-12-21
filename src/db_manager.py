@@ -19,7 +19,7 @@ class DataBaseManager:
             isolation_level="SERIALIZABLE",
         )
 
-    def __get_config(self, filename="database.ini", section="postgresql"):
+    def __get_config(self, filename="database.ini", section="med_user"):
         parser = ConfigParser()
 
         parser.read(filename)

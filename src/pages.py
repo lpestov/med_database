@@ -55,13 +55,37 @@ class WelcomePage(tk.Frame):
         )
         welcome_lb.pack(pady=(50, 20), expand=True)
 
-        start_btn = tk.Button(
-            self, text="Get started", font=("Arial", 14), command=self.start_main_page
-        )
+        button_frame = tk.Frame(self)
+        button_frame.pack(anchor=tk.CENTER, pady=(0, 100))
 
-        start_btn.pack(pady=(0, 100))
+        init_db_btn = tk.Button(
+            button_frame,
+            text="Init Database",
+            font=("Arial", 14),
+            command=self.dummy_action,
+        )
+        init_db_btn.pack(side=tk.LEFT, padx=5)
+
+        start_btn = tk.Button(
+            button_frame,
+            text="Get started",
+            font=("Arial", 14),
+            command=self.start_main_page,
+        )
+        start_btn.pack(side=tk.LEFT, padx=5)
+
+        drop_db_btn = tk.Button(
+            button_frame,
+            text="Drop Database",
+            font=("Arial", 14),
+            command=self.dummy_action,
+        )
+        drop_db_btn.pack(side=tk.LEFT, padx=5)
 
     def start_main_page(self):
         self.forget()
         main_page = MainPage(self.master)
         main_page.pack(expand=True, fill="both")
+
+    def dummy_action(self):
+        print("Clicked")
