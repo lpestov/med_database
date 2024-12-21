@@ -219,6 +219,11 @@ CREATE OR REPLACE PROCEDURE procedures.drop_database_schema()
 LANGUAGE plpgsql
 AS $$
 BEGIN
+    -- Проверка, что текущий пользователь — 'med_procedures_owner'	
+    IF current_user != 'med_procedures_owner' THEN
+        RAISE EXCEPTION 'Permission denied: this procedure can only be executed by owner';
+    END IF;
+    
     EXECUTE 'DROP SCHEMA IF EXISTS tables CASCADE';
     RAISE NOTICE 'Схема tables и все связанные таблицы удалены.';
 END;
@@ -271,7 +276,12 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION procedures.get_all_data(table_name TEXT)
 RETURNS SETOF JSON AS $$
 BEGIN
-    RETURN QUERY EXECUTE format('SELECT row_to_json(t) FROM tables.%I AS t', table_name);
+    RETURN QUERY EXECUTE format(
+        'SELECT row_to_json(t) 
+         FROM tables.%I AS t
+         ORDER BY t.id', 
+        table_name
+    );
 END;
 $$ LANGUAGE plpgsql;
 -- Пример: SELECT * FROM procedures.get_all_data('patients');
@@ -281,6 +291,11 @@ CREATE OR REPLACE PROCEDURE procedures.seed_data()
 LANGUAGE plpgsql
 AS $$
 BEGIN
+    -- Проверка, что текущий пользователь — 'med_procedures_owner'
+    IF current_user != 'med_procedures_owner' THEN
+        RAISE EXCEPTION 'Permission denied: this procedure can only be executed by owner';
+    END IF;
+    
     -- Заполняем таблицу "Поликлиника"
     INSERT INTO tables.clinic (name, address, phone) VALUES
         ('Поликлиника №1', 'г. Нижний Новгород, ул. Ленина, д. 1', '8311234567'),
@@ -357,8 +372,8 @@ BEGIN
     GRANT EXECUTE ON FUNCTION procedures.count_tables() TO med_user;
     GRANT EXECUTE ON FUNCTION procedures.get_all_table_headers() TO med_user;
     GRANT EXECUTE ON FUNCTION procedures.get_all_data(TEXT) TO med_user;
-    REVOKE EXECUTE ON FUNCTION procedures.seed_data() FROM med_user;
-    REVOKE EXECUTE ON FUNCTION procedures.drop_database_schema() FROM med_user;
+    REVOKE EXECUTE ON PROCEDURE procedures.seed_data() FROM med_user;
+    REVOKE EXECUTE ON PROCEDURE procedures.drop_database_schema() FROM med_user;
     
     -- Заполнение данными
     CALL procedures.seed_data();
