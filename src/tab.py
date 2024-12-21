@@ -225,6 +225,7 @@ class Tab(ttk.Frame):
 
     def find_cortege_window(self):
         input_win = tk.Toplevel(self)
+        input_win.transient(self)
         input_win.title("Find a record")
         input_win.protocol(
             "WM_DELETE_WINDOW", lambda: self.destroy_search_top_win(input_win)
