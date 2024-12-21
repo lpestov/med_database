@@ -42,6 +42,9 @@ class Tab(ttk.Frame):
         find_button = tk.Button(
             buttons_frame, text="Find", command=self.find_cortege_window
         )
+        find_button = tk.Button(
+            buttons_frame, text="Find", command=self.find_cortege_window
+        )
 
         add_button.pack(side="left", padx=5)
         edit_button.pack(side="left", padx=5)
