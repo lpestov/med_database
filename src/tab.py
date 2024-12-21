@@ -103,6 +103,8 @@ class Tab(ttk.Frame):
                 )
                 entries[col] = selected_option
                 status_option_menu.grid(row=1, column=col_idx, padx=5, pady=6)
+                input_table_header = tk.Label(input_table_win, text=col)
+                input_table_header.grid(row=0, column=col_idx, padx=5, pady=5)
                 continue
 
             input_table_header = tk.Label(input_table_win, text=col)
