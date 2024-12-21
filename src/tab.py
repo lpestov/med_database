@@ -323,7 +323,6 @@ class Tab(ttk.Frame):
             next_prev_btns["next"]["state"] = "normal"
 
         self.highlight_record(0)
-        print(self.found_records)
 
     def highlight_record(self, record_idx_in_founds_list):
         tree_children = self.tree.get_children()
