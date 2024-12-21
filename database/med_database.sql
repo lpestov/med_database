@@ -119,7 +119,6 @@ SET search_path TO procedures, tables, init, public;
 -- Функция для расчета возраста
 CREATE OR REPLACE FUNCTION procedures.calculate_age()
 RETURNS TRIGGER
-SECURITY DEFINER -- процедура выполняется с правами владельца
 AS $$
 BEGIN
     NEW.age := DATE_PART('year', AGE(NEW.birth_date));
@@ -136,7 +135,6 @@ EXECUTE FUNCTION procedures.calculate_age();
 -- Триггер для изменения статуса записи
 CREATE OR REPLACE FUNCTION procedures.update_appointment_status()
 RETURNS TRIGGER
-SECURITY DEFINER
 AS $$
 BEGIN
     IF NEW.appointment_date < CURRENT_DATE AND NEW.status = 'запланировано' THEN
@@ -159,7 +157,6 @@ CREATE OR REPLACE FUNCTION procedures.search_by_key(
     search_value TEXT
 )
 RETURNS TABLE(result JSON)
-SECURITY DEFINER
 AS $$
 BEGIN
     RETURN QUERY EXECUTE FORMAT(
@@ -177,8 +174,9 @@ SELECT * FROM procedures.search_by_key('patients', 'full_name', 'Алексее�
 
 -- Процедура удаления записи
 CREATE OR REPLACE PROCEDURE procedures.delete_record(table_name TEXT, column_name TEXT, key_value TEXT)
-SECURITY DEFINER
-LANGUAGE plpgsql AS $$
+LANGUAGE plpgsql
+SECURITY DEFINER -- заставит процедуру выполняться с привилегиями владельца функции, т.к у med_user нету права на DELETE
+AS $$
 BEGIN
     EXECUTE format('DELETE FROM tables.%I WHERE %I = %L', table_name, column_name, key_value);
 END;
@@ -187,7 +185,6 @@ $$;
 
 -- Процедура вставки данных
 CREATE OR REPLACE PROCEDURE procedures.insert_into_table(table_name TEXT, columns TEXT[], info TEXT[])
-SECURITY DEFINER
 AS $$
 BEGIN
     EXECUTE format(
@@ -200,7 +197,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 /* Пример:
-SELECT procedures.insert_into_table(
+CALL procedures.insert_into_table(
     'patients',
     ARRAY['full_name', 'birth_date', 'contacts', 'passport_data', 'insurance_policy_number'],
     ARRAY['Иван Иванов', '1980-01-01', '89991234567', '1234 567890', '12345678']
@@ -209,7 +206,6 @@ SELECT procedures.insert_into_table(
 
 -- Процедура изменения записи
 CREATE OR REPLACE PROCEDURE procedures.update_record(table_name TEXT, column_name TEXT, new_value TEXT, key_column TEXT, key_value TEXT)
-SECURITY DEFINER
 LANGUAGE plpgsql AS $$
 BEGIN
     EXECUTE format('UPDATE tables.%I SET %I = %L WHERE %I = %L',
@@ -220,7 +216,6 @@ $$;
 
 -- Процедура для удаления схемы с каскадным удалением всех таблиц
 CREATE OR REPLACE PROCEDURE procedures.drop_database_schema()
-SECURITY DEFINER 
 LANGUAGE plpgsql
 AS $$
 BEGIN
@@ -235,7 +230,6 @@ CREATE OR REPLACE FUNCTION procedures.count_tables()
 RETURNS INTEGER AS $$
 DECLARE
     table_count INTEGER;
-SECURITY DEFINER
 BEGIN
     SELECT COUNT(*)
     INTO table_count
@@ -252,7 +246,6 @@ CREATE OR REPLACE FUNCTION procedures.get_all_table_headers()
 RETURNS JSON AS $$
 DECLARE
     headers JSON;
-SECURITY DEFINER
 BEGIN
     SELECT json_object_agg(
         table_name,
@@ -277,7 +270,6 @@ $$ LANGUAGE plpgsql;
 -- Функция для выдачи всех данных из таблицы
 CREATE OR REPLACE FUNCTION procedures.get_all_data(table_name TEXT)
 RETURNS SETOF JSON AS $$
-SECURITY DEFINER
 BEGIN
     RETURN QUERY EXECUTE format('SELECT row_to_json(t) FROM tables.%I AS t', table_name);
 END;
@@ -286,7 +278,6 @@ $$ LANGUAGE plpgsql;
 
 -- Процедура для заполнения данными
 CREATE OR REPLACE PROCEDURE procedures.seed_data()
-SECURITY DEFINER
 LANGUAGE plpgsql
 AS $$
 BEGIN
@@ -366,8 +357,8 @@ BEGIN
     GRANT EXECUTE ON FUNCTION procedures.count_tables() TO med_user;
     GRANT EXECUTE ON FUNCTION procedures.get_all_table_headers() TO med_user;
     GRANT EXECUTE ON FUNCTION procedures.get_all_data(TEXT) TO med_user;
-    -- GRANT EXECUTE ON PROCEDURE procedures.drop_database_schema() TO med_user; лучше не надо давать такое право
-    -- GRANT EXECUTE ON PROCEDURE procedures.seed_data() TO med_user; наверно тоже не стоит, заполним один раз
+    REVOKE EXECUTE ON FUNCTION procedures.seed_data() FROM med_user;
+    REVOKE EXECUTE ON FUNCTION procedures.drop_database_schema() FROM med_user;
     
     -- Заполнение данными
     CALL procedures.seed_data();
