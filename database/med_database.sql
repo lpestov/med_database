@@ -226,6 +226,9 @@ BEGIN
     
     EXECUTE 'DROP SCHEMA IF EXISTS tables CASCADE';
     RAISE NOTICE 'Схема tables и все связанные таблицы удалены.';
+    
+    -- Устанавливаем флаг инициализации в FALSE
+    UPDATE init.initialization_status SET is_initialized = FALSE;
 END;
 $$;
 -- Пример: CALL procedures.drop_database_schema();
@@ -286,6 +289,7 @@ END;
 $$ LANGUAGE plpgsql;
 -- Пример: SELECT * FROM procedures.get_all_data('patients');
 
+
 -- Процедура для заполнения данными
 CREATE OR REPLACE PROCEDURE procedures.seed_data()
 LANGUAGE plpgsql
@@ -334,9 +338,30 @@ END;
 $$;
 -- Пример: CALL procedures.seed_data();
 
--- Создаем процедуру инициализации в схеме init
+-- Переходим в схему init
 SET search_path TO init, tables, procedures, public;
 
+-- Таблица для хранения состояния инициализации
+CREATE TABLE init.initialization_status (
+    is_initialized BOOLEAN NOT NULL DEFAULT FALSE
+);
+-- Добавляем запись со значением по умолчанию (база данных не инициализирована)
+INSERT INTO init.initialization_status (is_initialized) VALUES (FALSE);
+
+-- Функция для проверки, проинициализирована ли БД
+CREATE OR REPLACE FUNCTION procedures.is_db_initialized()
+RETURNS BOOLEAN AS $$
+DECLARE
+    initialized BOOLEAN;
+BEGIN
+    SELECT is_initialized INTO initialized FROM init.initialization_status;
+    RETURN initialized;
+END;
+$$ LANGUAGE plpgsql;
+-- SELECT procedures.is_db_initialized();
+
+
+-- Создаем процедуру инициализации в схеме init
 ALTER FUNCTION procedures.calculate_age() OWNER TO med_procedures_owner;
 ALTER FUNCTION procedures.update_appointment_status() OWNER TO med_procedures_owner;
 ALTER FUNCTION procedures.search_by_key(text, text, text) OWNER TO med_procedures_owner;
@@ -375,8 +400,8 @@ BEGIN
     REVOKE EXECUTE ON PROCEDURE procedures.seed_data() FROM med_user;
     REVOKE EXECUTE ON PROCEDURE procedures.drop_database_schema() FROM med_user;
     
-    -- Заполнение данными
-    CALL procedures.seed_data();
+    -- Устанавливаем флаг инициализации в TRUE
+    UPDATE init.initialization_status SET is_initialized = TRUE;
     
     RAISE NOTICE 'База данных инициализирована.';
 END;
