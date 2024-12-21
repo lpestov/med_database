@@ -286,51 +286,68 @@ class Tab(ttk.Frame):
             self.found_records = self.db_manager.find_record(
                 self.table_name, key_col, key_val
             )
-            self.show_found_records(self.found_records, next_prev_btns)
+            self.show_found_records(next_prev_btns)
         except Exception as e:
             ms.showerror(title="Search Error", message="Check input data")
             print(e)
 
-    def show_found_records(self, records, next_prev_btns):
-        if not records:
+    def show_found_records(self, next_prev_btns):
+        tree_children = self.tree.get_children()
+        self.tree.selection_remove(*tree_children)
+
+        if not self.found_records:
             ms.showinfo(message="Nothing was found")
             return
-        found_records_num = len(records)
+        found_records_num = len(self.found_records)
         ms.showinfo(
             title="Found Message Number", message=f"Found {found_records_num} records"
         )
+
+        if found_records_num == 1:
+            next_prev_btns["prev"]["state"] = "disabled"
+            next_prev_btns["next"]["state"] = "disabled"
 
         if found_records_num > 1:
             next_prev_btns["prev"]["state"] = "normal"
             next_prev_btns["next"]["state"] = "normal"
 
-        self.highlight_record(records[0]["id"])
-        print(records)
+        self.highlight_record(0)
+        print(self.found_records)
 
-    def highlight_record(self, record_id):
+    def highlight_record(self, record_idx_in_founds_list):
         tree_children = self.tree.get_children()
         self.tree.selection_remove(*tree_children)
-        self.tree.selection_set(tree_children[record_id - 1])
-        self.currentHighlightedRecordID = record_id
-        self.tree.see(tree_children[record_id - 1])
+        tree_child_idx = self.find_tree_child_index(
+            self.found_records[record_idx_in_founds_list]["id"]
+        )
+        self.tree.selection_set(tree_child_idx)
+        self.currentHighlightedRecordID = record_idx_in_founds_list
+        self.tree.see(tree_child_idx)
 
     def destroy_search_top_win(self, top):
         self.found_records = []
         self.currentHighlightedRecordID = -1
         top.destroy()
 
+    def find_tree_child_index(self, record_id):
+        for tree_child_idx in self.tree.get_children():
+            record_values = self.tree.item(tree_child_idx, "values")
+            if int(record_values[0]) == record_id:
+                return tree_child_idx
+        return None
+
     def next_found_record(self):
         if self.found_records:
-            self.currentHighlightedRecordID = self.found_records[
-                (self.currentHighlightedRecordID + 1) % len(self.found_records)
-            ]["id"]
+            self.currentHighlightedRecordID = (
+                self.currentHighlightedRecordID + 1
+            ) % len(self.found_records)
             self.highlight_record(self.currentHighlightedRecordID)
 
     def prev_found_record(self):
         if self.found_records:
-            self.currentHighlightedRecordID = self.found_records[
-                (self.currentHighlightedRecordID - 1) % len(self.found_records)
-            ]["id"]
+            self.currentHighlightedRecordID = (
+                self.currentHighlightedRecordID - 1
+            ) % len(self.found_records)
             self.highlight_record(self.currentHighlightedRecordID)
 
     def dummy_action(self):
