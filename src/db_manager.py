@@ -37,7 +37,7 @@ class DataBaseManager:
         return db_connection_info
 
     def get_tables_number(self):
-        query = "SELECT * FROM count_tables();"
+        query = "SELECT * FROM procedures.count_tables();"
         with self.engine.connect() as connect:
             tables_num = connect.execute(text(query)).fetchall()[0][0]
             connect.commit()
@@ -45,7 +45,7 @@ class DataBaseManager:
 
     def get_table_titles_and_headers(self):
         # Возвращает словарь в формате "название_таблицы": ["заголовок1", "заголовок2", ...]
-        query = "SELECT * FROM get_all_table_headers();"
+        query = "SELECT * FROM procedures.get_all_table_headers();"
         tables_info = None
         with self.engine.connect() as connect:
             tables_info = connect.execute(text(query)).fetchall()[0][0]
@@ -53,7 +53,7 @@ class DataBaseManager:
         return tables_info
 
     def get_data_from_table(self, table_title):
-        query = "SELECT * FROM get_all_data('{}')".format(table_title)
+        query = "SELECT * FROM procedures.get_all_data('{}')".format(table_title)
         with self.engine.connect() as connect:
             tables_info = [row[0] for row in connect.execute(text(query)).fetchall()]
             connect.commit()
@@ -71,7 +71,7 @@ class DataBaseManager:
         )
 
         query = (
-            f"SELECT insert_into_table('{table_name}', "
+            f"CALL procedures.insert_into_table('{table_name}', "
             f"{table_headers_sql_arr}, {new_values_sql_arr})"
         )
 
@@ -83,7 +83,7 @@ class DataBaseManager:
         if any(is_possible_sql_injection(val) for val in new_val.split()):
             raise Exception("Possible SQL-injection detected")
 
-        query = "CALL update_record('{}', '{}', '{}', '{}', '{}')".format(
+        query = "CALL procedures.update_record('{}', '{}', '{}', '{}', '{}')".format(
             table_name, col_name, new_val, key_col, key_val
         )
 
@@ -92,7 +92,7 @@ class DataBaseManager:
             connect.commit()
 
     def delete_record(self, table_name, key_col, key_val):
-        query = "CALL delete_record('{}', '{}', '{}')".format(
+        query = "CALL procedures.delete_record('{}', '{}', '{}')".format(
             table_name, key_col, key_val
         )
         with self.engine.connect() as connect:
@@ -103,7 +103,7 @@ class DataBaseManager:
         if any(is_possible_sql_injection(val) for val in key_val.split()):
             raise Exception("Possible SQL-injection detected")
 
-        query = "SELECT * FROM search_by_key('{}', '{}', '{}');".format(
+        query = "SELECT * FROM procedures.search_by_key('{}', '{}', '{}');".format(
             table_name, key_col, key_val
         )
 
