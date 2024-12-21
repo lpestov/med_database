@@ -260,23 +260,34 @@ class Tab(ttk.Frame):
         key_value_label = tk.Label(input_win, text="Значение для поиска:")
         key_value_label.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
 
-        # Меню выбора ключевого столбца
-        key_column = tk.StringVar(value=self.table_columns[0])
-        key_column_selection_menu = tk.OptionMenu(
-            input_win, key_column, *self.table_columns
-        )
-        key_column_selection_menu.config(width=15)
-        key_column_selection_menu.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
-
         # Поле для ввода поискового значения
         key_value_entry = tk.Entry(input_win, width=15, justify="center")
         key_value_entry.grid(row=1, column=1, padx=5, pady=5, sticky="nsew")
+        key_val_widget_container = {
+            "widget": key_value_entry,
+            "value_container": key_value_entry,
+        }
+
+        # Меню выбора ключевого столбца
+        key_column = tk.StringVar(value=self.table_columns[0])
+        key_column_selection_menu = tk.OptionMenu(
+            input_win,
+            key_column,
+            *self.table_columns,
+            command=lambda selection: self.update_selection_menu_child_widget_in_find_btn(
+                key_val_widget_container, input_win, selection
+            ),
+        )
+        key_column_selection_menu.config(width=15)
+        key_column_selection_menu.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
 
         find_button = tk.Button(
             input_win,
             text="Find!",
             command=lambda: self.find_cortege(
-                key_column.get(), key_value_entry.get(), next_prev_btns
+                key_column.get(),
+                key_val_widget_container["value_container"].get(),
+                next_prev_btns,
             ),
         )
         find_button.grid(row=3, column=0, columnspan=2, pady=10, sticky="nsew")
@@ -349,6 +360,22 @@ class Tab(ttk.Frame):
                 self.currentHighlightedRecordID - 1
             ) % len(self.found_records)
             self.highlight_record(self.currentHighlightedRecordID)
+
+    def update_selection_menu_child_widget_in_find_btn(
+        self, widget_container, master, selection
+    ):
+        old_widget = widget_container["widget"]
+        old_widget.destroy()
+        if selection == "status":
+            statuses = ["запланировано", "пропущено", "отменено", "завершено"]
+            selected_status = tk.StringVar(value=statuses[0])
+            new_widget = tk.OptionMenu(master, selected_status, *statuses)
+            widget_container["value_container"] = selected_status
+        else:
+            new_widget = tk.Entry(master, width=15, justify="center")
+            widget_container["value_container"] = new_widget
+        new_widget.grid(row=1, column=1, padx=5, pady=5, sticky="nsew")
+        widget_container["widget"] = new_widget
 
     def dummy_action(self):
         print("Button clicked!")
