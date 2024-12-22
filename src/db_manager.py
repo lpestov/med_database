@@ -137,3 +137,16 @@ class DataBaseManager:
         with self.engine.connect() as connect:
             connect.execute(text(init_db_query))
             connect.commit()
+
+    def is_database_initialized(self):
+        if self.connection_params["user"] != "med_procedures_owner":
+            raise Exception(
+                "Permission denied: user "
+                + self.connection_params["user"]
+                + " can't drop database"
+            )
+        query = "SELECT procedures.is_db_initialized()"
+        with self.engine.connect() as connect:
+            is_inited = connect.execute(text(query)).fetchall()[0][0]
+            connect.commit()
+        return is_inited

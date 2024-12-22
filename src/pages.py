@@ -86,6 +86,10 @@ class WelcomePage(tk.Frame):
         drop_db_btn.pack(side=tk.LEFT, padx=5)
 
     def drop_database(self):
+        if not self.db_manager.is_database_initialized():
+            ms.showerror(title="DROP", message="Database is already dropped")
+            return
+
         try:
             self.db_manager.drop_database()
             ms.showinfo(title="Success", message="Database deleted successfully")
@@ -94,6 +98,10 @@ class WelcomePage(tk.Frame):
             print(e)
 
     def init_database(self):
+        if self.db_manager.is_database_initialized():
+            ms.showerror(title="INIT", message="Database is already initialized")
+            return
+
         try:
             self.db_manager.init_db_for_med_user()
             ms.showinfo(title="Success", message="Database initialized successfully")
@@ -102,6 +110,10 @@ class WelcomePage(tk.Frame):
             print(e)
 
     def start_main_page(self):
+        if not self.db_manager.is_database_initialized():
+            ms.showerror(title="Start Error", message="Database is not initialized")
+            return
+
         del self.db_manager
         self.forget()
         main_page = MainPage(self.master)
