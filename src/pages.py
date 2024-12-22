@@ -13,7 +13,7 @@ class MainPage(tk.Frame):
 
         menu_bar = tk.Menu(self)
         db_menu = tk.Menu(menu_bar, tearoff=0)
-        db_menu.add_command(label="Seed database", command=self.dummy_action)
+        db_menu.add_command(label="Seed database", command=self.seed_database)
         db_menu.add_command(label="Clear all tables", command=self.dummy_action)
         menu_bar.add_cascade(label="Settings", menu=db_menu)
         self.master.config(menu=menu_bar)
@@ -42,6 +42,15 @@ class MainPage(tk.Frame):
         for tab_id in self.notebook.tabs():
             tab = self.notebook.nametowidget(tab_id)
             tab.update_displayed_table_data()
+
+    def seed_database(self):
+        try:
+            self.database_manager.seed_data()
+            ms.showinfo(title="Success", message="Database seeded successully")
+            self.update_all_tables()
+        except Exception as e:
+            ms.showerror(title="Seeding Error", message="Seed database error")
+            print(e)
 
     def dummy_action(self):
         print("Clicked!")

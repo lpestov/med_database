@@ -150,3 +150,9 @@ class DataBaseManager:
             is_inited = connect.execute(text(query)).fetchall()[0][0]
             connect.commit()
         return is_inited
+
+    def seed_data(self):
+        query = "CALL procedures.seed_data();"
+        with self.engine.connect() as connect:
+            connect.execute(text(query))
+            connect.commit()
