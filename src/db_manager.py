@@ -6,8 +6,8 @@ from sql_injection_check import is_possible_sql_injection
 
 
 class DataBaseManager:
-    def __init__(self):
-        self.connection_params = self.__get_config()
+    def __init__(self, user_name="med_user"):
+        self.connection_params = self.__get_config(section=user_name)
         self.engine = create_engine(
             "postgresql+psycopg2://{}:{}@{}/{}".format(
                 self.connection_params["user"],
@@ -111,3 +111,29 @@ class DataBaseManager:
             found_records = connect.execute(text(query)).fetchall()
             connect.commit()
         return [found_record[0] for found_record in found_records]
+
+    def init_db_for_med_user(self):
+        if self.connection_params["user"] != "med_procedures_owner":
+            raise Exception(
+                "Permission denied: user "
+                + self.connection_params["user"]
+                + " can't init database"
+            )
+
+        init_db_query = "CALL init.initialize_database();"
+        with self.engine.connect() as connect:
+            connect.execute(text(init_db_query))
+            connect.commit()
+
+    def drop_database(self):
+        if self.connection_params["user"] != "med_procedures_owner":
+            raise Exception(
+                "Permission denied: user "
+                + self.connection_params["user"]
+                + " can't drop database"
+            )
+
+        init_db_query = "CALL procedures.drop_database_schema()"
+        with self.engine.connect() as connect:
+            connect.execute(text(init_db_query))
+            connect.commit()
