@@ -43,7 +43,7 @@ class Tab(ttk.Frame):
             buttons_frame, text="Find", command=self.find_cortege_window
         )
         clear_table_button = tk.Button(
-            buttons_frame, text="Clear Table", command=self.dummy_action
+            buttons_frame, text="Clear Table", command=self.clear_table
         )
 
         add_button.pack(side="left", padx=5)
@@ -382,6 +382,15 @@ class Tab(ttk.Frame):
             widget_container["value_container"] = new_widget
         new_widget.grid(row=1, column=1, padx=5, pady=5, sticky="nsew")
         widget_container["widget"] = new_widget
+
+    def clear_table(self):
+        try:
+            self.db_manager.clear_table(self.table_name)
+            ms.showinfo(title="Success", message="Table cleared successfully")
+            self.notebook.update_all_tables()
+        except Exception as e:
+            ms.showerror(title="Clearing error", message="C")
+            print(e)
 
     def dummy_action(self):
         print("Button clicked!")

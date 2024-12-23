@@ -14,7 +14,7 @@ class MainPage(tk.Frame):
         menu_bar = tk.Menu(self)
         db_menu = tk.Menu(menu_bar, tearoff=0)
         db_menu.add_command(label="Seed database", command=self.seed_database)
-        db_menu.add_command(label="Clear all tables", command=self.dummy_action)
+        db_menu.add_command(label="Clear all tables", command=self.clear_all_tables)
         menu_bar.add_cascade(label="Settings", menu=db_menu)
         self.master.config(menu=menu_bar)
 
@@ -50,6 +50,15 @@ class MainPage(tk.Frame):
             self.update_all_tables()
         except Exception as e:
             ms.showerror(title="Seeding Error", message="Seed database error")
+            print(e)
+
+    def clear_all_tables(self):
+        try:
+            self.database_manager.clear_all_tables()
+            ms.showinfo(title="Success", message="All tables cleared successully")
+            self.update_all_tables()
+        except Exception as e:
+            ms.showerror(title="Clearing Error", message="Clear database error")
             print(e)
 
     def dummy_action(self):

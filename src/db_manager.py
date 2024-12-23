@@ -145,7 +145,7 @@ class DataBaseManager:
                 + self.connection_params["user"]
                 + " can't drop database"
             )
-        query = "SELECT procedures.is_db_initialized()"
+        query = "SELECT init.is_db_initialized()"
         with self.engine.connect() as connect:
             is_inited = connect.execute(text(query)).fetchall()[0][0]
             connect.commit()
@@ -155,4 +155,16 @@ class DataBaseManager:
         query = "CALL procedures.seed_data();"
         with self.engine.connect() as connect:
             connect.execute(text(query))
+            connect.commit()
+
+    def clear_table(self, table_name):
+        clear_table_query = "CALL procedures.clear_table('{}')".format(table_name)
+        with self.engine.connect() as connect:
+            connect.execute(text(clear_table_query))
+            connect.commit()
+
+    def clear_all_tables(self):
+        clear_all_tables_query = "CALL procedures.clear_all_tables();"
+        with self.engine.connect() as connect:
+            connect.execute(text(clear_all_tables_query))
             connect.commit()
