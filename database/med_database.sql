@@ -290,6 +290,60 @@ $$ LANGUAGE plpgsql;
 -- Пример: SELECT * FROM procedures.get_all_data('patients');
 
 
+-- Процедура для очистки конкретной таблицы
+CREATE OR REPLACE PROCEDURE procedures.clear_table(table_name_ TEXT)
+LANGUAGE plpgsql
+SECURITY DEFINER -- выполняется с правами владельца процедуры
+AS $$
+BEGIN
+    -- Проверка существования таблицы
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'tables'
+        AND table_name = table_name_
+    ) THEN
+        RAISE EXCEPTION 'Table %.% does not exist', 'tables', table_name_;
+    END IF;
+
+    -- Очистка таблицы
+    EXECUTE format('TRUNCATE TABLE tables.%I RESTART IDENTITY CASCADE', table_name_);
+    RAISE NOTICE 'Таблица %.% очищена', 'tables', table_name_;
+END;
+$$;
+-- Пример: CALL procedures.clear_table('patients');
+
+-- Процедура для очистки всех таблиц в схеме tables
+CREATE OR REPLACE PROCEDURE procedures.clear_all_tables()
+LANGUAGE plpgsql
+SECURITY DEFINER -- выполняется с правами владельца процедуры
+AS $$
+DECLARE
+    table_name text;
+BEGIN
+    -- Отключаем проверку внешних ключей на время очистки
+    SET CONSTRAINTS ALL DEFERRED;
+
+    -- Перебираем все таблицы в схеме tables
+    FOR table_name IN 
+        SELECT tables.table_name 
+        FROM information_schema.tables 
+        WHERE table_schema = 'tables'
+    LOOP
+        -- Очистка каждой таблицы
+        EXECUTE format('TRUNCATE TABLE tables.%I CASCADE', table_name);
+        RAISE NOTICE 'Таблица %.% очищена', 'tables', table_name;
+    END LOOP;
+
+    -- Включаем обратно проверку внешних ключей
+    SET CONSTRAINTS ALL IMMEDIATE;
+
+    RAISE NOTICE 'Все таблицы в схеме tables очищены';
+END;
+$$;
+-- Пример: CALL procedures.clear_all_tables();
+
+
 -- Процедура для заполнения данными
 CREATE OR REPLACE PROCEDURE procedures.seed_data()
 LANGUAGE plpgsql
@@ -372,6 +426,8 @@ ALTER PROCEDURE procedures.drop_database_schema() OWNER TO med_procedures_owner;
 ALTER FUNCTION procedures.count_tables() OWNER TO med_procedures_owner;
 ALTER FUNCTION procedures.get_all_table_headers() OWNER TO med_procedures_owner;
 ALTER FUNCTION procedures.get_all_data(text) OWNER TO med_procedures_owner;
+ALTER PROCEDURE procedures.clear_table(text) OWNER TO med_procedures_owner;
+ALTER PROCEDURE procedures.clear_all_tables() OWNER TO med_procedures_owner;
 ALTER PROCEDURE procedures.seed_data() OWNER TO med_procedures_owner;
 
 CREATE OR REPLACE PROCEDURE init.initialize_database()
@@ -467,6 +523,8 @@ BEGIN
     GRANT EXECUTE ON PROCEDURE procedures.delete_record(TEXT, TEXT, TEXT) TO med_user;
     GRANT EXECUTE ON PROCEDURE procedures.insert_into_table(TEXT, TEXT[], TEXT[]) TO med_user;
     GRANT EXECUTE ON PROCEDURE procedures.update_record(TEXT, TEXT, TEXT, TEXT, TEXT) TO med_user;
+    GRANT EXECUTE ON PROCEDURE procedures.clear_table(TEXT) to med_user;
+    GRANT EXECUTE ON PROCEDURE procedures.clear_all_tables() to med_user;
     GRANT EXECUTE ON FUNCTION procedures.search_by_key(TEXT, TEXT, TEXT) TO med_user;
     GRANT EXECUTE ON FUNCTION procedures.count_tables() TO med_user;
     GRANT EXECUTE ON FUNCTION procedures.get_all_table_headers() TO med_user;
