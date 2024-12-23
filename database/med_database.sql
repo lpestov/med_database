@@ -331,7 +331,7 @@ BEGIN
         WHERE table_schema = 'tables'
     LOOP
         -- Очистка каждой таблицы
-        EXECUTE format('TRUNCATE TABLE tables.%I CASCADE', table_name);
+    		EXECUTE format('TRUNCATE TABLE tables.%I RESTART IDENTITY CASCADE', table_name);
         RAISE NOTICE 'Таблица %.% очищена', 'tables', table_name;
     END LOOP;
 
@@ -347,6 +347,7 @@ $$;
 -- Процедура для заполнения данными
 CREATE OR REPLACE PROCEDURE procedures.seed_data()
 LANGUAGE plpgsql
+SECURITY DEFINER -- выполняется с правами владельца процедуры
 AS $$
 BEGIN
     -- Проверка, что текущий пользователь — 'med_procedures_owner'
@@ -403,7 +404,7 @@ CREATE TABLE init.initialization_status (
 INSERT INTO init.initialization_status (is_initialized) VALUES (FALSE);
 
 -- Функция для проверки, проинициализирована ли БД
-CREATE OR REPLACE FUNCTION procedures.is_db_initialized()
+CREATE OR REPLACE FUNCTION init.is_db_initialized()
 RETURNS BOOLEAN AS $$
 DECLARE
     initialized BOOLEAN;
@@ -412,7 +413,7 @@ BEGIN
     RETURN initialized;
 END;
 $$ LANGUAGE plpgsql;
--- SELECT procedures.is_db_initialized();
+-- SELECT init.is_db_initialized();
 
 
 -- Создаем процедуру инициализации в схеме init
@@ -525,11 +526,11 @@ BEGIN
     GRANT EXECUTE ON PROCEDURE procedures.update_record(TEXT, TEXT, TEXT, TEXT, TEXT) TO med_user;
     GRANT EXECUTE ON PROCEDURE procedures.clear_table(TEXT) to med_user;
     GRANT EXECUTE ON PROCEDURE procedures.clear_all_tables() to med_user;
+    GRANT EXECUTE ON PROCEDURE procedures.seed_data() TO med_user;
     GRANT EXECUTE ON FUNCTION procedures.search_by_key(TEXT, TEXT, TEXT) TO med_user;
     GRANT EXECUTE ON FUNCTION procedures.count_tables() TO med_user;
     GRANT EXECUTE ON FUNCTION procedures.get_all_table_headers() TO med_user;
     GRANT EXECUTE ON FUNCTION procedures.get_all_data(TEXT) TO med_user;
-    REVOKE EXECUTE ON PROCEDURE procedures.seed_data() FROM med_user;
     REVOKE EXECUTE ON PROCEDURE procedures.drop_database_schema() FROM med_user;
     
     -- Пересоздаем триггеры
