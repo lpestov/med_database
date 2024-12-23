@@ -51,7 +51,7 @@ GRANT CONNECT ON DATABASE med_database TO med_user;
 -- Переходим в схему таблиц и создаем там все таблицы
 SET search_path TO tables, procedures, init, public;
 
--- Назначаем med_procedures_owner права на таблицы, функции и процедуры
+-- Назначаем med_procedures_owner права на схемы
 ALTER SCHEMA tables OWNER TO med_procedures_owner;
 ALTER SCHEMA procedures OWNER TO med_procedures_owner;
 ALTER SCHEMA init OWNER TO med_procedures_owner;
@@ -378,15 +378,89 @@ CREATE OR REPLACE PROCEDURE init.initialize_database()
 LANGUAGE plpgsql
 AS $$
 BEGIN
+    -- Проверка, что текущий пользователь — 'med_procedures_owner'
+    IF current_user != 'med_procedures_owner' THEN
+        RAISE EXCEPTION 'Permission denied: this procedure can only be executed by owner';
+    END IF;
+
+    -- Создаем схему для таблиц, если её нет
+    CREATE SCHEMA IF NOT EXISTS tables;
+    ALTER SCHEMA tables OWNER TO med_procedures_owner;
+
+    -- Таблица "Пациенты"
+    CREATE TABLE IF NOT EXISTS tables.patients (
+        id SERIAL PRIMARY KEY,
+        full_name VARCHAR(255) NOT NULL,
+        birth_date DATE NOT NULL,
+        contacts VARCHAR(255),
+        passport_data VARCHAR(50) NOT NULL,
+        insurance_policy_number VARCHAR(50) NOT NULL,
+        age INT
+    );
+
+    -- Таблица "Поликлиника"
+    CREATE TABLE IF NOT EXISTS tables.clinic (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        address VARCHAR(255) NOT NULL,
+        phone VARCHAR(20) NOT NULL
+    );
+
+    -- Таблица "Доктора"
+    CREATE TABLE IF NOT EXISTS tables.doctors (
+        id SERIAL PRIMARY KEY,
+        full_name VARCHAR(255) NOT NULL,
+        specialization VARCHAR(100) NOT NULL,
+        contacts VARCHAR(255),
+        clinic_id INT NOT NULL REFERENCES tables.clinic(id) ON DELETE CASCADE
+    );
+
+    -- Таблица "Записи на прием"
+    CREATE TABLE IF NOT EXISTS tables.appointments (
+        id SERIAL PRIMARY KEY,
+        patient_id INT REFERENCES tables.patients(id) ON DELETE CASCADE,
+        doctor_id INT REFERENCES tables.doctors(id) ON DELETE CASCADE,
+        appointment_date DATE NOT NULL,
+        status VARCHAR(50) DEFAULT 'запланировано',
+        clinic_id INT REFERENCES tables.clinic(id) ON DELETE CASCADE,
+        CONSTRAINT chk_status CHECK (status IN ('запланировано', 'пропущено', 'отменено', 'завершено'))
+    );
+
+    -- Таблица "Медицинская книжка"
+    CREATE TABLE IF NOT EXISTS tables.medical_records (
+        id SERIAL PRIMARY KEY,
+        patient_id INT REFERENCES tables.patients(id) ON DELETE CASCADE,
+        conclusion TEXT NOT NULL,
+        record_date DATE NOT NULL
+    );
+
+    -- Назначаем владельца для всех таблиц
+    ALTER TABLE tables.clinic OWNER TO med_procedures_owner;
+    ALTER TABLE tables.patients OWNER TO med_procedures_owner;
+    ALTER TABLE tables.doctors OWNER TO med_procedures_owner;
+    ALTER TABLE tables.appointments OWNER TO med_procedures_owner;
+    ALTER TABLE tables.medical_records OWNER TO med_procedures_owner;
+
+    -- Создаем индекс для ускорения поиска по имени пациента, если его нет
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes 
+        WHERE schemaname = 'tables' 
+        AND tablename = 'patients' 
+        AND indexname = 'idx_patients_full_name'
+    ) THEN
+        CREATE INDEX idx_patients_full_name ON tables.patients(full_name);
+    END IF;
+
     -- Даем пользователю права на схему с таблицами
     GRANT USAGE ON SCHEMA tables TO med_user;
+    
     -- Даем права на таблицы
     GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA tables TO med_user;
 
     -- Даем права на последовательности
     GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA tables TO med_user;
 
-    -- Даем пользователю права на схему procedures (пока что только на использование, все остальное на уровне конкретных процедур)
+    -- Даем пользователю права на схему procedures
     GRANT USAGE ON SCHEMA procedures TO med_user;
     
     -- Даем права на отдельные процедуры
@@ -399,6 +473,21 @@ BEGIN
     GRANT EXECUTE ON FUNCTION procedures.get_all_data(TEXT) TO med_user;
     REVOKE EXECUTE ON PROCEDURE procedures.seed_data() FROM med_user;
     REVOKE EXECUTE ON PROCEDURE procedures.drop_database_schema() FROM med_user;
+    
+    -- Пересоздаем триггеры
+    -- Для расчета возраста
+    DROP TRIGGER IF EXISTS trigger_calculate_age ON tables.patients;
+    CREATE TRIGGER trigger_calculate_age
+    BEFORE INSERT OR UPDATE ON tables.patients
+    FOR EACH ROW
+    EXECUTE FUNCTION procedures.calculate_age();
+
+    -- Для обновления статуса записи
+    DROP TRIGGER IF EXISTS trigger_update_status ON tables.appointments;
+    CREATE TRIGGER trigger_update_status
+    BEFORE INSERT OR UPDATE ON tables.appointments
+    FOR EACH ROW
+    EXECUTE FUNCTION procedures.update_appointment_status();
     
     -- Устанавливаем флаг инициализации в TRUE
     UPDATE init.initialization_status SET is_initialized = TRUE;
