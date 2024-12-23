@@ -260,11 +260,11 @@ class Tab(ttk.Frame):
         next_prev_btns["next"].grid(row=2, column=1, padx=5, pady=5, sticky="nsew")
 
         # Лейбл для столбца, по которому ищем
-        key_column_label = tk.Label(input_win, text="Столбец для поиска:")
+        key_column_label = tk.Label(input_win, text="Search column:")
         key_column_label.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
 
         # Лейбл для значения, которое ищем
-        key_value_label = tk.Label(input_win, text="Значение для поиска:")
+        key_value_label = tk.Label(input_win, text="Search value:")
         key_value_label.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
 
         # Поле для ввода поискового значения
