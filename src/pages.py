@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import messagebox as ms
 from tkinter import ttk
 
+from PIL import Image, ImageTk
+
 from db_manager import DataBaseManager
 from tab import Tab
 
@@ -80,16 +82,38 @@ class MainPage(tk.Frame):
 
 class WelcomePage(tk.Frame):
     def __init__(self, master):
-        super().__init__(master)
+        super().__init__(master, background="white")
 
         self.db_manager = DataBaseManager("med_procedures_owner")
 
+        # Загрузка изображения
+        image = Image.open("images/left.jpg")
+        image = image.resize((250, 250))  # Подгонка размера
+        self.left_img = ImageTk.PhotoImage(image)
+
+        # Установка изображения через Label
+        left_img_label = tk.Label(self, image=self.left_img)
+        left_img_label.pack(side="left", padx=50)
+
+        # Загрузка изображения
+        image = Image.open("images/right.jpg")
+        image = image.resize((250, 250))  # Подгонка размера
+        self.right_img = ImageTk.PhotoImage(image)
+
+        # Установка изображения через Label
+        right_img_label = tk.Label(self, image=self.right_img)
+        right_img_label.pack(side="right", padx=50)
+
         welcome_lb = tk.Label(
-            self, text="Welcome to MedDataBase", font=("Arial", 24, "bold")
+            self,
+            text="Welcome to MedDataBase!",
+            font=("Arial", 24, "bold"),
+            background="white",
+            foreground="black",
         )
         welcome_lb.pack(pady=(50, 20), expand=True)
 
-        button_frame = tk.Frame(self)
+        button_frame = tk.Frame(self, background="white")
         button_frame.pack(anchor=tk.CENTER, pady=(0, 100))
 
         init_db_btn = tk.Button(
