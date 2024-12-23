@@ -11,12 +11,17 @@ class MainPage(tk.Frame):
         super().__init__(master)
         self.database_manager = DataBaseManager("med_user")
 
-        menu_bar = tk.Menu(self)
-        db_menu = tk.Menu(menu_bar, tearoff=0)
-        db_menu.add_command(label="Seed database", command=self.seed_database)
-        db_menu.add_command(label="Clear all tables", command=self.clear_all_tables)
-        menu_bar.add_cascade(label="Settings", menu=db_menu)
-        self.master.config(menu=menu_bar)
+        self.menu_bar = tk.Menu(self)
+        self.db_menu = tk.Menu(self.menu_bar, tearoff=0)
+        self.db_menu.add_command(label="Seed database", command=self.seed_database)
+        self.db_menu.add_command(
+            label="Clear all tables", command=self.clear_all_tables
+        )
+        self.db_menu.add_command(
+            label="Exit to Welcome Page", command=self.exit_to_welcome_page
+        )
+        self.menu_bar.add_cascade(label="Menu", menu=self.db_menu)
+        self.master.config(menu=self.menu_bar)
 
         tables_info = self.database_manager.get_table_titles_and_headers()
 
@@ -60,6 +65,14 @@ class MainPage(tk.Frame):
         except Exception as e:
             ms.showerror(title="Clearing Error", message="Clear database error")
             print(e)
+
+    def exit_to_welcome_page(self):
+        self.menu_bar.destroy()
+        self.db_menu.destroy()
+        self.forget()
+        self.master.config(menu=None)
+        welcome_page = WelcomePage(self.master)
+        welcome_page.pack(expand=True, fill="both")
 
     def dummy_action(self):
         print("Clicked!")
